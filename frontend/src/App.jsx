@@ -1,11 +1,11 @@
-import PlaybackExport from "./components/PlaybackExport";
+import AudioUpload from "./components/AudioUpload";
+import "./App.css";
 
-function App() {
+export default function App() {
   return (
-    <div>
-      <PlaybackExport />
+    <div className="app">
+      <h1>Sound Lab</h1>
+      <AudioUpload />
     </div>
   );
 }
-
-export default App;
