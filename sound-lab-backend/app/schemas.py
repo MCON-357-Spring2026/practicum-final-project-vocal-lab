@@ -5,6 +5,8 @@ These define the JSON shape FastAPI expects (request bodies)
 and what it returns (response bodies). They are NOT database tables.
 """
 
+from datetime import datetime
+
 from pydantic import BaseModel, EmailStr
 
 
@@ -27,3 +29,23 @@ class Token(BaseModel):
 
     access_token: str  # JWT string the client sends on protected routes.
     token_type: str  # Always "bearer" — used in Authorization: Bearer <token>.
+
+
+class RecordingItem(BaseModel):
+    """One recording in a list or detail response."""
+
+    id: int  # Database primary key.
+    file_id: str  # Public UUID used in API URLs.
+    filename: str  # Original name from the user's computer.
+    stored_as: str  # Disk filename under uploads/ (for /uploads/{stored_as}).
+    created_at: datetime
+
+
+class RecordingResponse(BaseModel):
+    """JSON response returned after a successful upload."""
+
+    id: int
+    file_id: str
+    filename: str
+    stored_as: str
+    message: str  # Human-readable status, e.g. "Upload successful".
