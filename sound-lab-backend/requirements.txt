@@ -3,5 +3,10 @@ uvicorn
 python-multipart
 python-jose
 sqlalchemy
+alembic
 pydantic
 email-validator
+librosa
+pydub
+numpy
+soundfile
