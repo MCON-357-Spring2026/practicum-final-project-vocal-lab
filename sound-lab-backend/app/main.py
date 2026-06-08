@@ -34,7 +34,7 @@ app.add_middleware(
 # Mount auth routes: /auth/register, /auth/login, /auth/me
 app.include_router(auth_router, prefix="/auth")
 
-# Mount audio routes: /audio/upload
+# Mount audio routes: /audio/upload, /audio/detect-key
 app.include_router(audio_router, prefix="/audio")
 
 # Serve uploaded files at /uploads/<filename> (e.g. play in browser).

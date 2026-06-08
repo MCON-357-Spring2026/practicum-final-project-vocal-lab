@@ -5,3 +5,6 @@ python-jose
 sqlalchemy
 pydantic
 email-validator
+librosa
+numpy
+soundfile

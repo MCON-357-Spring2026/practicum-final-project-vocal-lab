@@ -1,13 +1,17 @@
 """
-Audio upload API routes.
+Audio API routes: upload and key detection.
 
-Mounted under /audio (see main.py).
+All routes are mounted under /audio (see main.py).
 """
 
+import os
 import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from pydantic import BaseModel
+
+from .services.key_detection import detect_key
 
 router = APIRouter()
 
@@ -53,3 +57,24 @@ async def upload_audio(file: UploadFile = File(...)):
         "stored_as": saved_name,
         "message": "Upload successful",
     }
+
+
+class KeyDetectionRequest(BaseModel):
+    """JSON body for POST /audio/detect-key."""
+
+    file_path: str  # Absolute path to an audio file on the server.
+
+
+@router.post("/detect-key")
+def detect_song_key(request: KeyDetectionRequest):
+    """
+    Detect the musical key of an audio file.
+
+    Expects JSON: {"file_path": "C:/path/to/song.mp3"}
+    """
+    if not os.path.exists(request.file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    result = detect_key(request.file_path)
+
+    return result
