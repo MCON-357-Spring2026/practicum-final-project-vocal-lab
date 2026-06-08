@@ -7,6 +7,7 @@ Docs at:  http://127.0.0.1:8000/docs
 
 from fastapi import FastAPI
 
+from .audio import router as audio_router
 from .auth import router as auth_router
 from .database import Base, engine
 from . import models  # noqa: F401 — import registers User model with Base
@@ -19,3 +20,5 @@ app = FastAPI()
 
 # Mount auth routes: /auth/register, /auth/login, /auth/me
 app.include_router(auth_router, prefix="/auth")
+# Mount audio routes: /audio/detect-key
+app.include_router(audio_router, prefix="/audio")
