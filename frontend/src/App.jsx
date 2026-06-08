@@ -1,9 +1,9 @@
-import VocalRecorder from "./components/VocalRecorder";
+import PlaybackExport from "./components/PlaybackExport";
 
 function App() {
   return (
     <div>
-      <VocalRecorder />
+      <PlaybackExport />
     </div>
   );
 }

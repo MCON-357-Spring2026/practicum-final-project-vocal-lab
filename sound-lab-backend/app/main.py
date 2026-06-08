@@ -44,3 +44,4 @@ UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 app.mount("/recordings", StaticFiles(directory="recordings"), name="recordings")
+app.mount("/exports", StaticFiles(directory="exports"), name="exports")

@@ -11,6 +11,7 @@ from pathlib import Path
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
+from .services.audio_mixer import mix_audio
 from .services.key_detection import detect_key
 
 router = APIRouter()
@@ -78,3 +79,25 @@ def detect_song_key(request: KeyDetectionRequest):
     result = detect_key(request.file_path)
 
     return result
+
+
+class MixRequest(BaseModel):
+    instrumental_path: str
+    vocal_path: str
+
+
+@router.post("/mix")
+def mix_tracks(request: MixRequest):
+    if not os.path.exists(request.instrumental_path):
+        raise HTTPException(status_code=404, detail="Instrumental file not found")
+
+    if not os.path.exists(request.vocal_path):
+        raise HTTPException(status_code=404, detail="Vocal file not found")
+
+    result = mix_audio(request.instrumental_path, request.vocal_path)
+
+    return {
+        "message": "Export created successfully",
+        "filename": result["filename"],
+        "file_path": result["file_path"]
+    }
