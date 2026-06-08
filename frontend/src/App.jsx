@@ -1,11 +1,11 @@
-import AudioUpload from "./components/AudioUpload";
-import "./App.css";
+import VocalRecorder from "./components/VocalRecorder";
 
-export default function App() {
+function App() {
   return (
-    <div className="app">
-      <h1>Sound Lab</h1>
-      <AudioUpload />
+    <div>
+      <VocalRecorder />
     </div>
   );
 }
+
+export default App;

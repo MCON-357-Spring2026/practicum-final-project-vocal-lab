@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .audio import router as audio_router
 from .auth import router as auth_router
+from .recording import router as recording_router
 from .database import Base, engine
 from . import models  # noqa: F401 — import registers User model with Base
 
@@ -36,8 +37,10 @@ app.include_router(auth_router, prefix="/auth")
 
 # Mount audio routes: /audio/upload, /audio/detect-key
 app.include_router(audio_router, prefix="/audio")
+app.include_router(recording_router, prefix="/recording")
 
 # Serve uploaded files at /uploads/<filename> (e.g. play in browser).
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+app.mount("/recordings", StaticFiles(directory="recordings"), name="recordings")
