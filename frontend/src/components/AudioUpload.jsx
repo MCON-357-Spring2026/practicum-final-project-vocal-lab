@@ -2,7 +2,7 @@
  * Upload + key detection + vocal removal UI.
  *
  * Flow: login → upload (auto key on full song) → remove vocals →
- *       optional re-detect key on instrumental.
+ *       optional re-detect key on instrumental → select backing track for recording.
  */
 import { useState } from "react";
 
@@ -27,7 +27,7 @@ function KeyDisplay({ recording }) {
   );
 }
 
-export default function AudioUpload() {
+export default function AudioUpload({ onKeyDetected, onInstrumentalReady }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   // Restore token from last session so user stays logged in on refresh.
@@ -35,8 +35,11 @@ export default function AudioUpload() {
     () => sessionStorage.getItem("access_token") ?? ""
   );
   const [file, setFile] = useState(null);
+  const [instrumentalFile, setInstrumentalFile] = useState(null);
   const [recordings, setRecordings] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadingInstrumental, setUploadingInstrumental] = useState(false);
+  const [backingTrackLabel, setBackingTrackLabel] = useState("");
   const [loggingIn, setLoggingIn] = useState(false);
   const [result, setResult] = useState(null);
   // Track which recording is busy (allows per-item buttons in the list).
@@ -44,12 +47,33 @@ export default function AudioUpload() {
   const [redetectingKeyFor, setRedetectingKeyFor] = useState(null);
   const [error, setError] = useState(null);
 
+  const notifyKeyDetected = (recording) => {
+    if (recording?.detected_key && onKeyDetected) {
+      onKeyDetected(recording.detected_key);
+    }
+  };
+
+  const useAsBackingTrack = (storedAs, label) => {
+    if (onInstrumentalReady) {
+      onInstrumentalReady(`${API_URL}/uploads/${storedAs}`);
+    }
+    setBackingTrackLabel(label);
+  };
+
+  const useInstrumentalAsBackingTrack = (instrumentalStoredAs, label) => {
+    if (onInstrumentalReady) {
+      onInstrumentalReady(`${API_URL}/instrumentals/${instrumentalStoredAs}`);
+    }
+    setBackingTrackLabel(label);
+  };
+
   // Keep upload result and "My Recordings" in sync after remove-vocals / redetect-key.
   const updateRecordingInState = (updated) => {
     setRecordings((prev) =>
       prev.map((item) => (item.file_id === updated.file_id ? updated : item))
     );
     setResult((prev) => (prev?.file_id === updated.file_id ? { ...prev, ...updated } : prev));
+    notifyKeyDetected(updated);
   };
 
   // POST /audio/recordings/{file_id}/remove-vocals — Demucs + saves instrumental_stored_as.
@@ -70,6 +94,14 @@ export default function AudioUpload() {
       }
 
       updateRecordingInState(data);
+
+      if (data.instrumental_stored_as) {
+        useInstrumentalAsBackingTrack(
+          data.instrumental_stored_as,
+          `Instrumental (vocals removed): ${data.filename}`
+        );
+      }
+
       return data;
     } finally {
       setRemovingVocalsFor(null);
@@ -177,10 +209,51 @@ export default function AudioUpload() {
 
       setResult(data);
       await fetchRecordings(token);
+      notifyKeyDetected(data);
     } catch (err) {
       setError(err.message);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const uploadInstrumental = async () => {
+    if (!instrumentalFile) return;
+    if (!token) {
+      setError("Log in first before uploading.");
+      return;
+    }
+
+    setUploadingInstrumental(true);
+    setError(null);
+
+    const formData = new FormData();
+    formData.append("file", instrumentalFile);
+
+    try {
+      const res = await fetch(`${API_URL}/audio/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const message =
+          typeof data.detail === "string"
+            ? data.detail
+            : "Instrumental upload failed. Check file type and try again.";
+        throw new Error(message);
+      }
+
+      useAsBackingTrack(data.stored_as, `Instrumental: ${data.filename}`);
+      await fetchRecordings(token);
+      notifyKeyDetected(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploadingInstrumental(false);
     }
   };
 
@@ -195,6 +268,16 @@ export default function AudioUpload() {
         <audio controls src={`${API_URL}/uploads/${recording.stored_as}`} />
 
         <br />
+
+        <button
+          type="button"
+          onClick={() =>
+            useAsBackingTrack(recording.stored_as, recording.filename)
+          }
+          style={{ marginRight: 8, marginTop: 8 }}
+        >
+          Use as Backing Track
+        </button>
 
         <button
           type="button"
@@ -217,6 +300,18 @@ export default function AudioUpload() {
               src={`${API_URL}/instrumentals/${recording.instrumental_stored_as}`}
             />
             <br />
+            <button
+              type="button"
+              onClick={() =>
+                useInstrumentalAsBackingTrack(
+                  recording.instrumental_stored_as,
+                  `Instrumental: ${recording.filename}`
+                )
+              }
+              style={{ marginRight: 8, marginTop: 8 }}
+            >
+              Use Instrumental as Backing Track
+            </button>
             <button
               type="button"
               onClick={() =>
@@ -258,7 +353,26 @@ export default function AudioUpload() {
 
       {token && <p style={{ color: "green" }}>Logged in — you can upload now.</p>}
 
+      <h2 style={{ marginTop: 24 }}>Upload Instrumental</h2>
+      <p>Upload a ready-made instrumental to use as backing track while recording.</p>
+
+      <input
+        type="file"
+        accept="audio/*"
+        onChange={(e) => setInstrumentalFile(e.target.files[0])}
+      />
+
+      <button
+        type="button"
+        onClick={uploadInstrumental}
+        disabled={!instrumentalFile || uploadingInstrumental || !token}
+        style={{ marginLeft: 12 }}
+      >
+        {uploadingInstrumental ? "Uploading..." : "Upload Instrumental"}
+      </button>
+
       <h2 style={{ marginTop: 24 }}>Upload Song</h2>
+      <p>Upload a full song, then remove vocals or use it directly as backing track.</p>
 
       <input
         type="file"
@@ -274,6 +388,12 @@ export default function AudioUpload() {
       >
         {uploading ? "Uploading & detecting key..." : "Upload"}
       </button>
+
+      {backingTrackLabel && (
+        <p style={{ color: "green", marginTop: 12 }}>
+          Backing track selected: {backingTrackLabel}
+        </p>
+      )}
 
       {error && <p style={{ color: "crimson" }}>{error}</p>}
 
