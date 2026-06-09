@@ -6,7 +6,7 @@ These classes map Python objects to rows in SQLite tables.
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -51,6 +51,11 @@ class Recording(Base):
 
     # Owner of this recording.
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    # Auto key detection results (null until librosa runs on upload).
+    detected_key = Column(String, nullable=True)  # e.g. "C", "F#"
+    mode = Column(String, nullable=True)  # e.g. "major"
+    confidence = Column(Float, nullable=True)  # correlation score from detect_key()
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

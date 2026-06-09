@@ -60,7 +60,7 @@ export default function AudioUpload() {
     }
   };
 
-  // POST /audio/upload — send file as form-data with Bearer token.
+  // POST /audio/upload — backend also runs key detection (may take a few seconds).
   const uploadFile = async () => {
     if (!file) return;
     if (!token) {
@@ -148,6 +148,12 @@ export default function AudioUpload() {
           <p>Uploaded successfully!</p>
           <p>{result.filename}</p>
           <p>Recording id: {result.id}</p>
+          {/* Auto key detection result from backend (librosa) */}
+          {result.detected_key && (
+            <p>
+              Key: {result.detected_key} {result.mode} (confidence: {result.confidence})
+            </p>
+          )}
           {/* Play via static files mount: GET /uploads/{stored_as} */}
           <audio controls src={`${API_URL}/uploads/${result.stored_as}`} />
         </div>
@@ -163,6 +169,13 @@ export default function AudioUpload() {
               {recordings.map((recording) => (
                 <li key={recording.id} style={{ marginBottom: 16 }}>
                   <p>{recording.filename}</p>
+                  {/* Key stored in DB when upload ran auto-detection */}
+                  {recording.detected_key && (
+                    <p>
+                      Key: {recording.detected_key} {recording.mode} (confidence:{" "}
+                      {recording.confidence})
+                    </p>
+                  )}
                   <audio controls src={`${API_URL}/uploads/${recording.stored_as}`} />
                 </li>
               ))}

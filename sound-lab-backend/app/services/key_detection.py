@@ -17,8 +17,13 @@ MAJOR_PROFILE = np.array([
 ])
 
 
-def detect_key(file_path: str):
-    """Analyze an audio file and return the best-matching major key."""
+def detect_key(file_path: str) -> dict:
+    """
+    Analyze an audio file and return the best-matching major key.
+
+    Returns: {"key": "C", "mode": "major", "confidence": 0.85}
+    confidence is correlation strength (higher = more confident).
+    """
     y, sr = librosa.load(file_path, mono=True)
 
     # Average chroma across time to get a single pitch-class fingerprint.
@@ -33,11 +38,12 @@ def detect_key(file_path: str):
         score = np.corrcoef(chroma_mean, rotated_profile)[0, 1]
         scores.append(score)
 
+    # Pick the key whose profile best matches the song's pitch content.
     best_index = int(np.argmax(scores))
     best_score = float(scores[best_index])
 
     return {
-        "key": KEYS_MAJOR[best_index],
-        "mode": "major",
-        "confidence": round(best_score, 2)
+        "key": KEYS_MAJOR[best_index],  # saved as Recording.detected_key
+        "mode": "major",  # this detector only estimates major keys for now
+        "confidence": round(best_score, 2),
     }

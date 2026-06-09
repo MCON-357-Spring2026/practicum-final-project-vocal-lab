@@ -8,15 +8,20 @@ import os
 import uuid
 from pathlib import Path
 
+import logging
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from .auth import get_current_user, get_db
 from .models import Recording, User
 from .schemas import RecordingItem, RecordingResponse
 from .services.audio_mixer import mix_audio
 from .services.key_detection import detect_key
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -29,6 +34,24 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_EXTENSIONS = {"mp3", "wav", "ogg", "m4a", "flac", "webm"}
 
 
+async def _run_key_detection(recording: Recording, file_path: Path, db: Session) -> None:
+    """
+    Run librosa key detection and persist results on the recording.
+
+    Uses a thread pool so the async server is not blocked during analysis.
+    Upload still succeeds if detection fails (fields stay null).
+    """
+    try:
+        result = await run_in_threadpool(detect_key, str(file_path))
+        recording.detected_key = result["key"]
+        recording.mode = result["mode"]
+        recording.confidence = result["confidence"]
+        db.commit()
+        db.refresh(recording)
+    except Exception:
+        logger.exception("Key detection failed for %s", recording.file_id)
+
+
 def _recording_to_item(recording: Recording) -> dict:
     """Convert a DB row to the JSON shape the API returns."""
     return {
@@ -36,6 +59,9 @@ def _recording_to_item(recording: Recording) -> dict:
         "file_id": recording.file_id,
         "filename": recording.original_filename,
         "stored_as": recording.stored_as,
+        "detected_key": recording.detected_key,
+        "mode": recording.mode,
+        "confidence": recording.confidence,
         "created_at": recording.created_at,
     }
 
@@ -110,7 +136,11 @@ async def upload_audio(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Accept one audio file, save it to disk, and store metadata in the database."""
+    """
+    Accept one audio file, save it, store metadata, and auto-detect musical key.
+
+    Flow: validate → save disk → DB row → key detection → return enriched JSON.
+    """
     if not file.filename:
         raise HTTPException(status_code=400, detail="Filename is required")
 
@@ -131,6 +161,7 @@ async def upload_audio(
 
     file_path.write_bytes(contents)
 
+    # 1. Create DB record (key fields are null until detection finishes).
     recording = Recording(
         file_id=file_id,
         original_filename=file.filename,
@@ -141,11 +172,18 @@ async def upload_audio(
     db.commit()
     db.refresh(recording)
 
+    # 2. Analyze audio and update detected_key / mode / confidence.
+    await _run_key_detection(recording, file_path, db)
+
+    # 3. Return upload result including key (if detection succeeded).
     return {
         "id": recording.id,
         "file_id": recording.file_id,
         "filename": recording.original_filename,
         "stored_as": recording.stored_as,
+        "detected_key": recording.detected_key,
+        "mode": recording.mode,
+        "confidence": recording.confidence,
         "message": "Upload successful",
     }
 
@@ -158,7 +196,7 @@ class KeyDetectionRequest(BaseModel):
 
 @router.post("/detect-key")
 def detect_song_key(request: KeyDetectionRequest):
-    """Detect the musical key of an audio file on the server."""
+    """Manual key detection by server file path (upload does this automatically)."""
     if not os.path.exists(request.file_path):
         raise HTTPException(status_code=404, detail="File not found")
 
