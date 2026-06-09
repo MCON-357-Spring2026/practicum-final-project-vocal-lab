@@ -34,7 +34,12 @@ class User(Base):
 
 
 class Recording(Base):
-    """Represents one uploaded audio file owned by a user."""
+    """
+    One uploaded song owned by a user.
+
+    Full-song pipeline: stored_as → (optional) instrumental_stored_as → key fields.
+    key_source records whether detected_key came from the original or instrumental.
+    """
 
     __tablename__ = "recordings"
 
@@ -52,10 +57,15 @@ class Recording(Base):
     # Owner of this recording.
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
 
-    # Auto key detection results (null until librosa runs on upload).
+    # Key detection (librosa). Populated on upload; may be updated after re-detect.
     detected_key = Column(String, nullable=True)  # e.g. "C", "F#"
     mode = Column(String, nullable=True)  # e.g. "major"
     confidence = Column(Float, nullable=True)  # correlation score from detect_key()
+    # Which audio file produced the key above: "original" | "instrumental".
+    key_source = Column(String, nullable=True)
+
+    # Demucs output filename under instrumentals/ (set by POST .../remove-vocals).
+    instrumental_stored_as = Column(String, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

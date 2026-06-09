@@ -1,7 +1,8 @@
 """
 Key detection using chroma features and major-key profile matching.
 
-Loads an audio file and estimates the most likely major key.
+Called automatically on upload (full song) and optionally after vocal removal
+via POST /audio/recordings/{file_id}/redetect-key (instrumental track).
 """
 
 import librosa

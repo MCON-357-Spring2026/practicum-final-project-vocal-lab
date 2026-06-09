@@ -32,7 +32,7 @@ class Token(BaseModel):
 
 
 class RecordingItem(BaseModel):
-    """One recording in a list or detail response."""
+    """One recording returned by /mine, /recordings/{id}, remove-vocals, or redetect-key."""
 
     id: int  # Database primary key.
     file_id: str  # Public UUID used in API URLs.
@@ -41,6 +41,8 @@ class RecordingItem(BaseModel):
     detected_key: str | None = None  # e.g. "C" — null until analyzed.
     mode: str | None = None  # e.g. "major"
     confidence: float | None = None  # 0.0–1.0 from key detection.
+    key_source: str | None = None  # "original" (upload) or "instrumental" (re-detect)
+    instrumental_stored_as: str | None = None  # play at /instrumentals/{this}
     created_at: datetime
 
 
@@ -54,4 +56,6 @@ class RecordingResponse(BaseModel):
     detected_key: str | None = None  # Filled by librosa after upload.
     mode: str | None = None  # e.g. "major"
     confidence: float | None = None  # Higher = more confident match
+    key_source: str | None = None  # always "original" on upload response
+    instrumental_stored_as: str | None = None  # null until vocal removal runs
     message: str

@@ -33,7 +33,7 @@ app.add_middleware(
 # Mount auth routes: /auth/register, /auth/login, /auth/me
 app.include_router(auth_router, prefix="/auth")
 
-# Mount audio routes: upload, recordings CRUD, key detection, mix
+# Mount audio routes: upload, key detect, remove-vocals, redetect-key, mix
 app.include_router(audio_router, prefix="/audio")
 
 # Mount browser recording save: /recording/save
@@ -51,4 +51,7 @@ RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
 EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/recordings", StaticFiles(directory=RECORDINGS_DIR), name="recordings")
 app.mount("/exports", StaticFiles(directory=EXPORTS_DIR), name="exports")
-app.mount("/instrumentals", StaticFiles(directory="instrumentals"), name="instrumentals")
+# Vocal-removed tracks (linked from Recording.instrumental_stored_as).
+INSTRUMENTALS_DIR = Path(__file__).resolve().parent.parent / "instrumentals"
+INSTRUMENTALS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/instrumentals", StaticFiles(directory=INSTRUMENTALS_DIR), name="instrumentals")

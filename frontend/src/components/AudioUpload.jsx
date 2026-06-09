@@ -1,7 +1,31 @@
+/**
+ * Upload + key detection + vocal removal UI.
+ *
+ * Flow: login → upload (auto key on full song) → remove vocals →
+ *       optional re-detect key on instrumental.
+ */
 import { useState } from "react";
 
 // FastAPI backend URL (must match CORS allow_origins in main.py).
 const API_URL = "http://127.0.0.1:8000";
+
+// Label reflects whether key was detected on upload or after vocal removal.
+function keyLabel(source) {
+  if (source === "instrumental") return "Key (instrumental)";
+  return "Key (full song)";
+}
+
+// Shows detected_key from the API; key_source tells the user which pass ran.
+function KeyDisplay({ recording }) {
+  if (!recording?.detected_key) return null;
+
+  return (
+    <p>
+      {keyLabel(recording.key_source)}: {recording.detected_key} {recording.mode}{" "}
+      (confidence: {recording.confidence})
+    </p>
+  );
+}
 
 export default function AudioUpload() {
   const [email, setEmail] = useState("");
@@ -15,36 +39,65 @@ export default function AudioUpload() {
   const [uploading, setUploading] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
   const [result, setResult] = useState(null);
-  const [instrumentalResult, setInstrumentalResult] = useState(null);
-  const [removingVocals, setRemovingVocals] = useState(false);
+  // Track which recording is busy (allows per-item buttons in the list).
+  const [removingVocalsFor, setRemovingVocalsFor] = useState(null);
+  const [redetectingKeyFor, setRedetectingKeyFor] = useState(null);
   const [error, setError] = useState(null);
 
-  const removeVocals = async (filePath) => {
-    setRemovingVocals(true);
+  // Keep upload result and "My Recordings" in sync after remove-vocals / redetect-key.
+  const updateRecordingInState = (updated) => {
+    setRecordings((prev) =>
+      prev.map((item) => (item.file_id === updated.file_id ? updated : item))
+    );
+    setResult((prev) => (prev?.file_id === updated.file_id ? { ...prev, ...updated } : prev));
+  };
+
+  // POST /audio/recordings/{file_id}/remove-vocals — Demucs + saves instrumental_stored_as.
+  const removeVocalsForRecording = async (fileId) => {
+    setRemovingVocalsFor(fileId);
     setError(null);
-    setInstrumentalResult(null);
 
-    const response = await fetch(`${API_URL}/audio/remove-vocals`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        file_path: filePath,
-      }),
-    });
+    try {
+      const response = await fetch(`${API_URL}/audio/recordings/${fileId}/remove-vocals`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok) {
-      setRemovingVocals(false);
-      throw new Error(data.detail || "Vocal removal failed.");
+      if (!response.ok) {
+        throw new Error(data.detail || "Vocal removal failed.");
+      }
+
+      updateRecordingInState(data);
+      return data;
+    } finally {
+      setRemovingVocalsFor(null);
     }
+  };
 
-    console.log(data);
-    setInstrumentalResult(data);
-    setRemovingVocals(false);
-    return data;
+  // POST /audio/recordings/{file_id}/redetect-key — key on instrumental only.
+  const redetectKeyForRecording = async (fileId) => {
+    setRedetectingKeyFor(fileId);
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_URL}/audio/recordings/${fileId}/redetect-key`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Key re-detection failed.");
+      }
+
+      updateRecordingInState(data);
+      return data;
+    } finally {
+      setRedetectingKeyFor(null);
+    }
   };
 
   // GET /audio/mine — list all recordings for the logged-in user.
@@ -90,7 +143,7 @@ export default function AudioUpload() {
     }
   };
 
-  // POST /audio/upload — backend also runs key detection (may take a few seconds).
+  // POST /audio/upload — backend auto-detects key on the full song.
   const uploadFile = async () => {
     if (!file) return;
     if (!token) {
@@ -101,7 +154,6 @@ export default function AudioUpload() {
     setUploading(true);
     setError(null);
     setResult(null);
-    setInstrumentalResult(null);
 
     const formData = new FormData();
     formData.append("file", file); // key must match backend param name
@@ -124,12 +176,63 @@ export default function AudioUpload() {
       }
 
       setResult(data);
-      await fetchRecordings(token); // refresh list after upload
+      await fetchRecordings(token);
     } catch (err) {
       setError(err.message);
     } finally {
       setUploading(false);
     }
+  };
+
+  // Full-song flow: play original → remove vocals → play instrumental → optional re-detect key.
+  const renderRecordingActions = (recording) => {
+    const isRemoving = removingVocalsFor === recording.file_id;
+    const isRedetecting = redetectingKeyFor === recording.file_id;
+
+    return (
+      <>
+        {/* Original full song — static file from POST /upload */}
+        <audio controls src={`${API_URL}/uploads/${recording.stored_as}`} />
+
+        <br />
+
+        <button
+          type="button"
+          onClick={() =>
+            removeVocalsForRecording(recording.file_id).catch((err) =>
+              setError(err.message)
+            )
+          }
+          disabled={isRemoving || isRedetecting}
+        >
+          {isRemoving ? "Removing vocals..." : "Remove Vocals"}
+        </button>
+
+        {recording.instrumental_stored_as && (
+          <div style={{ marginTop: 16 }}>
+            {/* Shown after remove-vocals; re-detect updates KeyDisplay above */}
+            <p>Instrumental (vocals removed)</p>
+            <audio
+              controls
+              src={`${API_URL}/instrumentals/${recording.instrumental_stored_as}`}
+            />
+            <br />
+            <button
+              type="button"
+              onClick={() =>
+                redetectKeyForRecording(recording.file_id).catch((err) =>
+                  setError(err.message)
+                )
+              }
+              disabled={isRedetecting || isRemoving}
+              style={{ marginTop: 8 }}
+            >
+              {isRedetecting ? "Re-detecting key..." : "Re-detect Key (instrumental)"}
+            </button>
+          </div>
+        )}
+      </>
+    );
   };
 
   return (
@@ -169,7 +272,7 @@ export default function AudioUpload() {
         disabled={!file || uploading || !token}
         style={{ marginLeft: 12 }}
       >
-        {uploading ? "Uploading..." : "Upload"}
+        {uploading ? "Uploading & detecting key..." : "Upload"}
       </button>
 
       {error && <p style={{ color: "crimson" }}>{error}</p>}
@@ -179,38 +282,9 @@ export default function AudioUpload() {
           <p>Uploaded successfully!</p>
           <p>{result.filename}</p>
           <p>Recording id: {result.id}</p>
-          {/* Auto key detection result from backend (librosa) */}
-          {result.detected_key && (
-            <p>
-              Key: {result.detected_key} {result.mode} (confidence: {result.confidence})
-            </p>
-          )}
-          {/* Play via static files mount: GET /uploads/{stored_as} */}
-          <audio controls src={`${API_URL}/uploads/${result.stored_as}`} />
-
-          <br />
-
-          <button
-            type="button"
-            onClick={() =>
-              removeVocals(`uploads/${result.stored_as}`).catch((err) =>
-                setError(err.message)
-              )
-            }
-            disabled={removingVocals}
-          >
-            {removingVocals ? "Removing vocals..." : "Remove Vocals"}
-          </button>
-
-          {instrumentalResult && (
-            <div style={{ marginTop: 16 }}>
-              <p>{instrumentalResult.message}</p>
-              <audio
-                controls
-                src={`${API_URL}/instrumentals/${instrumentalResult.filename}`}
-              />
-            </div>
-          )}
+          {/* key_source is "original" right after upload */}
+          <KeyDisplay recording={result} />
+          {renderRecordingActions(result)}
         </div>
       )}
 
@@ -224,26 +298,8 @@ export default function AudioUpload() {
               {recordings.map((recording) => (
                 <li key={recording.id} style={{ marginBottom: 16 }}>
                   <p>{recording.filename}</p>
-                  {/* Key stored in DB when upload ran auto-detection */}
-                  {recording.detected_key && (
-                    <p>
-                      Key: {recording.detected_key} {recording.mode} (confidence:{" "}
-                      {recording.confidence})
-                    </p>
-                  )}
-                  <audio controls src={`${API_URL}/uploads/${recording.stored_as}`} />
-                  <br />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      removeVocals(`uploads/${recording.stored_as}`).catch((err) =>
-                        setError(err.message)
-                      )
-                    }
-                    disabled={removingVocals}
-                  >
-                    {removingVocals ? "Removing vocals..." : "Remove Vocals"}
-                  </button>
+                  <KeyDisplay recording={recording} />
+                  {renderRecordingActions(recording)}
                 </li>
               ))}
             </ul>
