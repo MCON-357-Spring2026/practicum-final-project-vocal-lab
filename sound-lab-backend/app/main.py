@@ -5,50 +5,51 @@ Run with: python -m uvicorn app.main:app --reload
 Docs at:  http://127.0.0.1:8000/docs
 """
 
-from pathlib import Path
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .audio import router as audio_router
+from .database import Base, engine
 from .auth import router as auth_router
+from .audio import router as audio_router
 from .recording import router as recording_router
-from . import models  # noqa: F401 — import registers models for Alembic
+from . import models  # noqa: F401 — registers models with Base
 
-# Tables are managed by Alembic migrations (see alembic/versions/).
-# Run: python -m alembic upgrade head
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
 # Allow the Vite dev server to call this API from the browser.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://localhost:5176",
+        "http://localhost:5177",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:5175",
+        "http://127.0.0.1:5176",
+        "http://127.0.0.1:5177",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mount auth routes: /auth/register, /auth/login, /auth/me
 app.include_router(auth_router, prefix="/auth")
-
-# Mount audio routes: upload, recordings CRUD, key detection, mix
 app.include_router(audio_router, prefix="/audio")
-
-# Mount browser recording save: /recording/save
 app.include_router(recording_router, prefix="/recording")
 
-# Serve uploaded files at /uploads/<filename> (e.g. play in browser).
-UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+for directory in ("uploads", "recordings", "instrumentals", "exports", "corrected"):
+    os.makedirs(directory, exist_ok=True)
 
-# Partner routes: serve saved browser recordings and mixed exports.
-RECORDINGS_DIR = Path(__file__).resolve().parent.parent / "recordings"
-EXPORTS_DIR = Path(__file__).resolve().parent.parent / "exports"
-RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
-EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/recordings", StaticFiles(directory=RECORDINGS_DIR), name="recordings")
-app.mount("/exports", StaticFiles(directory=EXPORTS_DIR), name="exports")
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/recordings", StaticFiles(directory="recordings"), name="recordings")
 app.mount("/instrumentals", StaticFiles(directory="instrumentals"), name="instrumentals")
+app.mount("/exports", StaticFiles(directory="exports"), name="exports")
+app.mount("/corrected", StaticFiles(directory="corrected"), name="corrected")

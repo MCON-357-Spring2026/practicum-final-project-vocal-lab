@@ -61,7 +61,7 @@ soxr==1.1.0
 SQLAlchemy==2.0.50
 starlette==1.2.1
 submitit==1.5.4
-sympy==1.14.0
+sympy==1.13.1
 threadpoolctl==3.6.0
 torch==2.5.1
 torchaudio==2.5.1
