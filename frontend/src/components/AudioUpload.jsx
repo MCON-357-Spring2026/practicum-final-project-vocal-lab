@@ -15,7 +15,37 @@ export default function AudioUpload() {
   const [uploading, setUploading] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
   const [result, setResult] = useState(null);
+  const [instrumentalResult, setInstrumentalResult] = useState(null);
+  const [removingVocals, setRemovingVocals] = useState(false);
   const [error, setError] = useState(null);
+
+  const removeVocals = async (filePath) => {
+    setRemovingVocals(true);
+    setError(null);
+    setInstrumentalResult(null);
+
+    const response = await fetch(`${API_URL}/audio/remove-vocals`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        file_path: filePath,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setRemovingVocals(false);
+      throw new Error(data.detail || "Vocal removal failed.");
+    }
+
+    console.log(data);
+    setInstrumentalResult(data);
+    setRemovingVocals(false);
+    return data;
+  };
 
   // GET /audio/mine — list all recordings for the logged-in user.
   const fetchRecordings = async (accessToken) => {
@@ -71,6 +101,7 @@ export default function AudioUpload() {
     setUploading(true);
     setError(null);
     setResult(null);
+    setInstrumentalResult(null);
 
     const formData = new FormData();
     formData.append("file", file); // key must match backend param name
@@ -156,6 +187,30 @@ export default function AudioUpload() {
           )}
           {/* Play via static files mount: GET /uploads/{stored_as} */}
           <audio controls src={`${API_URL}/uploads/${result.stored_as}`} />
+
+          <br />
+
+          <button
+            type="button"
+            onClick={() =>
+              removeVocals(`uploads/${result.stored_as}`).catch((err) =>
+                setError(err.message)
+              )
+            }
+            disabled={removingVocals}
+          >
+            {removingVocals ? "Removing vocals..." : "Remove Vocals"}
+          </button>
+
+          {instrumentalResult && (
+            <div style={{ marginTop: 16 }}>
+              <p>{instrumentalResult.message}</p>
+              <audio
+                controls
+                src={`${API_URL}/instrumentals/${instrumentalResult.filename}`}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -177,6 +232,18 @@ export default function AudioUpload() {
                     </p>
                   )}
                   <audio controls src={`${API_URL}/uploads/${recording.stored_as}`} />
+                  <br />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      removeVocals(`uploads/${recording.stored_as}`).catch((err) =>
+                        setError(err.message)
+                      )
+                    }
+                    disabled={removingVocals}
+                  >
+                    {removingVocals ? "Removing vocals..." : "Remove Vocals"}
+                  </button>
                 </li>
               ))}
             </ul>

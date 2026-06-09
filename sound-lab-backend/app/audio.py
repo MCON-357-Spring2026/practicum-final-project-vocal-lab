@@ -20,6 +20,7 @@ from .models import Recording, User
 from .schemas import RecordingItem, RecordingResponse
 from .services.audio_mixer import mix_audio
 from .services.key_detection import detect_key
+from .services.vocal_remover import remove_vocals
 
 logger = logging.getLogger(__name__)
 
@@ -201,6 +202,24 @@ def detect_song_key(request: KeyDetectionRequest):
         raise HTTPException(status_code=404, detail="File not found")
 
     return detect_key(request.file_path)
+
+
+@router.post("/remove-vocals")
+def remove_vocals_from_song(request: KeyDetectionRequest):
+    if not os.path.exists(request.file_path):
+        raise HTTPException(status_code=404, detail="Original song file not found")
+
+    try:
+        result = remove_vocals(request.file_path)
+
+        return {
+            "message": "Vocals removed successfully",
+            "filename": result["filename"],
+            "file_path": result["file_path"]
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 class MixRequest(BaseModel):
