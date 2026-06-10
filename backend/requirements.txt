@@ -63,8 +63,8 @@ starlette==1.2.1
 submitit==1.5.4
 sympy==1.13.1
 threadpoolctl==3.6.0
-torch==2.5.1
-torchaudio==2.5.1
+torch==2.6.0
+torchaudio==2.6.0
 tqdm==4.68.1
 treetable==0.2.6
 typing-inspection==0.4.2

@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import PitchFeedback from "./PitchFeedback";
 
 const API_URL = "http://127.0.0.1:8000";
 
@@ -10,7 +9,6 @@ export default function VocalRecorder({ songKey = "C", instrumentalUrl = "" }) {
   const instrumentalRef = useRef(null);
 
   const [isRecording, setIsRecording] = useState(false);
-  const [micStream, setMicStream] = useState(null);
   const [audioUrl, setAudioUrl] = useState("");
   const [audioBlob, setAudioBlob] = useState(null);
   const [uploadResult, setUploadResult] = useState(null);
@@ -26,7 +24,6 @@ export default function VocalRecorder({ songKey = "C", instrumentalUrl = "" }) {
 
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     streamRef.current = stream;
-    setMicStream(stream);
 
     const mediaRecorder = new MediaRecorder(stream);
     mediaRecorderRef.current = mediaRecorder;
@@ -51,7 +48,6 @@ export default function VocalRecorder({ songKey = "C", instrumentalUrl = "" }) {
       }
 
       stream.getTracks().forEach((track) => track.stop());
-      setMicStream(null);
       setIsRecording(false);
     };
 
@@ -130,12 +126,6 @@ export default function VocalRecorder({ songKey = "C", instrumentalUrl = "" }) {
       )}
 
       {isRecording && <p>Recording with instrumental...</p>}
-
-      <PitchFeedback
-        songKey={songKey}
-        active={isRecording}
-        mediaStream={micStream}
-      />
 
       {audioUrl && (
         <div>

@@ -29,3 +29,11 @@ __pycache__/
 venv/
 .venv/
 *.db
+
+# Backend runtime artifacts
+backend/uploads/
+backend/instrumentals/
+backend/recordings/
+backend/exports/
+backend/corrected/
+backend/demucs_output_*/
