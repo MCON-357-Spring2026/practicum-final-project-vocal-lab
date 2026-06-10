@@ -35,10 +35,8 @@ export default function AudioUpload({ onKeyDetected, onInstrumentalReady }) {
     () => sessionStorage.getItem("access_token") ?? ""
   );
   const [file, setFile] = useState(null);
-  const [instrumentalFile, setInstrumentalFile] = useState(null);
   const [recordings, setRecordings] = useState([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadingInstrumental, setUploadingInstrumental] = useState(false);
   const [backingTrackLabel, setBackingTrackLabel] = useState("");
   const [loggingIn, setLoggingIn] = useState(false);
   const [result, setResult] = useState(null);
@@ -217,46 +215,6 @@ export default function AudioUpload({ onKeyDetected, onInstrumentalReady }) {
     }
   };
 
-  const uploadInstrumental = async () => {
-    if (!instrumentalFile) return;
-    if (!token) {
-      setError("Log in first before uploading.");
-      return;
-    }
-
-    setUploadingInstrumental(true);
-    setError(null);
-
-    const formData = new FormData();
-    formData.append("file", instrumentalFile);
-
-    try {
-      const res = await fetch(`${API_URL}/audio/upload`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        const message =
-          typeof data.detail === "string"
-            ? data.detail
-            : "Instrumental upload failed. Check file type and try again.";
-        throw new Error(message);
-      }
-
-      useAsBackingTrack(data.stored_as, `Instrumental: ${data.filename}`);
-      await fetchRecordings(token);
-      notifyKeyDetected(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setUploadingInstrumental(false);
-    }
-  };
-
   // Full-song flow: play original → remove vocals → play instrumental → optional re-detect key.
   const renderRecordingActions = (recording) => {
     const isRemoving = removingVocalsFor === recording.file_id;
@@ -352,24 +310,6 @@ export default function AudioUpload({ onKeyDetected, onInstrumentalReady }) {
       </div>
 
       {token && <p style={{ color: "green" }}>Logged in — you can upload now.</p>}
-
-      <h2 style={{ marginTop: 24 }}>Upload Instrumental</h2>
-      <p>Upload a ready-made instrumental to use as backing track while recording.</p>
-
-      <input
-        type="file"
-        accept="audio/*"
-        onChange={(e) => setInstrumentalFile(e.target.files[0])}
-      />
-
-      <button
-        type="button"
-        onClick={uploadInstrumental}
-        disabled={!instrumentalFile || uploadingInstrumental || !token}
-        style={{ marginLeft: 12 }}
-      >
-        {uploadingInstrumental ? "Uploading..." : "Upload Instrumental"}
-      </button>
 
       <h2 style={{ marginTop: 24 }}>Upload Song</h2>
       <p>Upload a full song, then remove vocals or use it directly as backing track.</p>

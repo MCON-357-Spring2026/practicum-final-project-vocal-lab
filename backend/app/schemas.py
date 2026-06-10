@@ -59,3 +59,25 @@ class RecordingResponse(BaseModel):
     key_source: str | None = None  # always "original" on upload response
     instrumental_stored_as: str | None = None  # null until vocal removal runs
     message: str
+
+
+# --- Project schemas (see docs/API_CONTRACT.md) ---
+
+
+class ProjectResponse(BaseModel):
+    """JSON shape for /projects endpoints."""
+
+    id: int
+    project_id: str
+    name: str
+    upload_type: str
+    status: str
+    detected_key: str | None = None
+    mode: str | None = None
+    confidence: float | None = None
+    key_source: str | None = None
+    original_stored_as: str | None = None
+    instrumental_stored_as: str | None = None
+    vocal_stored_as: str | None = None
+    export_stored_as: str | None = None
+    created_at: datetime

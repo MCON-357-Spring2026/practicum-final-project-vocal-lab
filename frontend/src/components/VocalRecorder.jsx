@@ -106,8 +106,7 @@ export default function VocalRecorder({ songKey = "C", instrumentalUrl = "" }) {
         <p>Backing track ready — it will play while you record.</p>
       ) : (
         <p>
-          Upload an instrumental, use an uploaded song as backing track, or
-          remove vocals from a full song.
+          Upload a song, then use it as a backing track or remove vocals first.
         </p>
       )}
 

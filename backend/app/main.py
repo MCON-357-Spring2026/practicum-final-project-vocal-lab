@@ -13,6 +13,8 @@ from fastapi.staticfiles import StaticFiles
 
 from .audio import router as audio_router
 from .auth import router as auth_router
+from .config import CORS_ORIGINS
+from .projects import router as projects_router
 from .recording import router as recording_router
 from . import models  # noqa: F401 — import registers models for Alembic
 
@@ -21,21 +23,10 @@ from . import models  # noqa: F401 — import registers models for Alembic
 
 app = FastAPI()
 
-# Allow the Vite dev server to call this API from the browser.
+# Origins from CORS_ORIGINS env (comma-separated). See .env.example.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-        "http://localhost:5176",
-        "http://localhost:5177",
-        "http://127.0.0.1:5174",
-        "http://127.0.0.1:5175",
-        "http://127.0.0.1:5176",
-        "http://127.0.0.1:5177",
-    ],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,7 +34,10 @@ app.add_middleware(
 
 app.include_router(auth_router, prefix="/auth")
 
-# Mount audio routes: upload, key detect, remove-vocals, redetect-key, mix
+# Project-based studio workflow (see docs/API_CONTRACT.md).
+app.include_router(projects_router, prefix="/projects")
+
+# Legacy audio routes (deprecated — use /projects).
 app.include_router(audio_router, prefix="/audio")
 
 # Mount browser recording save: /recording/save

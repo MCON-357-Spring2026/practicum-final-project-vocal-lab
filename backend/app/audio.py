@@ -341,8 +341,15 @@ class MixRequest(BaseModel):
 
 
 @router.post("/mix")
-def mix_tracks(request: MixRequest):
-    """Overlay vocal track onto instrumental and export as MP3."""
+def mix_tracks(
+    request: MixRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Overlay vocal track onto instrumental and export as MP3.
+
+    Deprecated — use POST /projects/{project_id}/export instead.
+    """
+    _ = current_user
     if not os.path.exists(request.instrumental_path):
         raise HTTPException(status_code=404, detail="Instrumental file not found")
     if not os.path.exists(request.vocal_path):

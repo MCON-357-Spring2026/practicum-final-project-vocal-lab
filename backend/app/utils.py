@@ -15,8 +15,7 @@ from datetime import datetime, timedelta, timezone
 
 from jose import jwt
 
-# Secret used to sign JWTs. In production, load from an environment variable.
-SECRET_KEY = "supersecretkey_change_me"
+from .config import SECRET_KEY
 # Algorithm used to sign the JWT.
 ALGORITHM = "HS256"
 

@@ -29,8 +29,8 @@ class User(Base):
     # When the account was created (UTC).
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
-    # All recordings uploaded by this user.
     recordings = relationship("Recording", back_populates="user")
+    projects = relationship("Project", back_populates="user")
 
 
 class Recording(Base):
@@ -69,5 +69,35 @@ class Recording(Base):
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
-    # The user who owns this recording.
     user = relationship("User", back_populates="recordings")
+
+
+class Project(Base):
+    """
+    One studio project: upload → optional vocal removal → record → tune → export.
+
+    File fields store filenames only; directories are fixed per type (see projects.py).
+    """
+
+    __tablename__ = "projects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, nullable=False)
+    upload_type = Column(String, nullable=False)  # "full_song" | "instrumental"
+    status = Column(String, nullable=False, default="ready_to_record")
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    detected_key = Column(String, nullable=True)
+    mode = Column(String, nullable=True)
+    confidence = Column(Float, nullable=True)
+    key_source = Column(String, nullable=True)  # "original" | "instrumental"
+
+    original_stored_as = Column(String, nullable=True)
+    instrumental_stored_as = Column(String, nullable=True)
+    vocal_stored_as = Column(String, nullable=True)
+    export_stored_as = Column(String, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="projects")
