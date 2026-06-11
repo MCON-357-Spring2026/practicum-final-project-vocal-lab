@@ -1,15 +1,13 @@
-"""
-Database connection setup.
-
-Other modules import `engine`, `SessionLocal`, and `Base` from here.
-"""
-
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
+from .config import DATABASE_URL
 
-from .config import DATABASE_URL, engine_kwargs
+connect_args = {}
 
-engine = create_engine(DATABASE_URL, **engine_kwargs())
+if DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
