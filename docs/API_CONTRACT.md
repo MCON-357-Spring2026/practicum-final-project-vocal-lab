@@ -103,8 +103,8 @@ Frontend helpers: `frontend/src/api/projectContract.js`
 
 **Behavior:**
 
-- `full_song` → saves to `uploads/`, sets `original_stored_as`, auto key detect (`key_source=original`)
-- `instrumental` → saves to `instrumentals/`, sets `instrumental_stored_as`, auto key detect (`key_source=instrumental`)
+- `full_song` → saves to `uploads/`, sets `original_stored_as` (use **Detect key** and **Remove vocals** on project page)
+- `instrumental` → saves to `instrumentals/`, sets `instrumental_stored_as` (use **Detect key** on project page)
 
 ### `POST /projects/{project_id}/remove-vocals`
 

@@ -334,7 +334,7 @@ export default function ProjectDetail() {
 
         <p className="spinner-line">
 
-          Processing… key detection or vocal removal may take a moment.
+          Processing… vocal removal may take several minutes. Please keep this page open.
 
         </p>
 

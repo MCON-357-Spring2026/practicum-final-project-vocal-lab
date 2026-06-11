@@ -198,16 +198,6 @@ async def create_project(
     db.commit()
     db.refresh(project)
 
-    project.status = "processing"
-    db.commit()
-
-    key_source = "original" if upload_type == "full_song" else "instrumental"
-    await _run_key_detection(project, file_path, db, key_source=key_source)
-
-    project.status = "ready_to_record"
-    db.commit()
-    db.refresh(project)
-
     return _project_to_item(project)
 
 

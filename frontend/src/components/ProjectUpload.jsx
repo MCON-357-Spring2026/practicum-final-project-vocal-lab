@@ -91,15 +91,10 @@ export default function ProjectUpload({ onProjectCreated }) {
 
 
   const uploadLabel =
-
     uploadType === UPLOAD_TYPES.FULL_SONG
-
-      ? "Uploading full song & detecting key…"
-
+      ? "Uploading full song…"
       : uploadType === UPLOAD_TYPES.INSTRUMENTAL
-
-        ? "Uploading instrumental & detecting key…"
-
+        ? "Uploading instrumental…"
         : null;
 
 
@@ -112,7 +107,7 @@ export default function ProjectUpload({ onProjectCreated }) {
 
       <p className="msg-muted">
 
-        Upload a full song (we can remove vocals) or an instrumental backing track.
+        Upload a full song, then use <strong>Remove vocals</strong> and <strong>Detect key</strong> on the project page — or upload an instrumental to skip vocal removal.
 
       </p>
 
