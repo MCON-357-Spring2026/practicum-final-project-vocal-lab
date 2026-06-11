@@ -4,10 +4,8 @@ import numpy as np
 import librosa
 import soundfile as sf
 
+from ..storage import CORRECTED_DIR
 from .audio_mixer import _load_audio
-
-CORRECTED_DIR = "corrected"
-os.makedirs(CORRECTED_DIR, exist_ok=True)
 
 NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
@@ -73,7 +71,7 @@ def apply_basic_pitch_correction(vocal_path: str, song_key: str):
     )
 
     filename = f"{uuid.uuid4()}_corrected_vocal.wav"
-    output_path = os.path.join(CORRECTED_DIR, filename)
+    output_path = str(CORRECTED_DIR / filename)
 
     sf.write(output_path, corrected_audio, sr)
 

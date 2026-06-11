@@ -19,20 +19,17 @@ from .services.audio_mixer import mix_audio
 from .services.key_detection import detect_key
 from .services.pitch_correction import apply_basic_pitch_correction
 from .services.vocal_remover import remove_vocals
+from .storage import (
+    CORRECTED_DIR,
+    EXPORTS_DIR,
+    INSTRUMENTALS_DIR,
+    RECORDINGS_DIR,
+    UPLOAD_DIR,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-BACKEND_ROOT = Path(__file__).resolve().parent.parent
-UPLOAD_DIR = BACKEND_ROOT / "uploads"
-INSTRUMENTALS_DIR = BACKEND_ROOT / "instrumentals"
-RECORDINGS_DIR = BACKEND_ROOT / "recordings"
-CORRECTED_DIR = BACKEND_ROOT / "corrected"
-EXPORTS_DIR = BACKEND_ROOT / "exports"
-
-for directory in (UPLOAD_DIR, INSTRUMENTALS_DIR, RECORDINGS_DIR, CORRECTED_DIR, EXPORTS_DIR):
-    directory.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {"mp3", "wav", "ogg", "m4a", "flac", "webm"}
 UPLOAD_TYPES = {"full_song", "instrumental"}

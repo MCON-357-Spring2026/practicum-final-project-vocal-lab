@@ -26,18 +26,11 @@ from .schemas import RecordingItem, RecordingResponse
 from .services.audio_mixer import mix_audio
 from .services.key_detection import detect_key
 from .services.vocal_remover import remove_vocals
+from .storage import INSTRUMENTALS_DIR, STORAGE_ROOT, UPLOAD_DIR
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-# Store uploads next to the backend root (sound-lab-backend/uploads/).
-BACKEND_ROOT = Path(__file__).resolve().parent.parent
-UPLOAD_DIR = BACKEND_ROOT / "uploads"
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-# Demucs saves vocal-removed tracks here; served at GET /instrumentals/{filename}.
-INSTRUMENTALS_DIR = BACKEND_ROOT / "instrumentals"
-INSTRUMENTALS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Only allow common audio extensions (lowercase, without the dot).
 ALLOWED_EXTENSIONS = {"mp3", "wav", "ogg", "m4a", "flac", "webm"}
@@ -97,7 +90,7 @@ def _resolve_audio_path(relative_or_absolute: str) -> Path:
     path = Path(relative_or_absolute)
     if path.is_absolute() and path.exists():
         return path
-    candidate = BACKEND_ROOT / relative_or_absolute
+    candidate = STORAGE_ROOT / relative_or_absolute
     if candidate.exists():
         return candidate
     raise HTTPException(status_code=404, detail="File not found")

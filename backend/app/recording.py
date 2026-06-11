@@ -14,11 +14,9 @@ from pydantic import BaseModel
 from .auth import get_current_user
 from .models import User
 from .services.pitch_correction import apply_basic_pitch_correction
+from .storage import RECORDINGS_DIR
 
 router = APIRouter()
-
-RECORDINGS_DIR = "recordings"
-os.makedirs(RECORDINGS_DIR, exist_ok=True)
 
 
 class PitchCorrectionRequest(BaseModel):
@@ -37,7 +35,7 @@ async def save_recording(
     extension = file.filename.split(".")[-1] if file.filename and "." in file.filename else "webm"
 
     filename = f"{file_id}.{extension}"
-    file_path = os.path.join(RECORDINGS_DIR, filename)
+    file_path = str(RECORDINGS_DIR / filename)
 
     with open(file_path, "wb") as f:
         f.write(await file.read())

@@ -12,9 +12,7 @@ import librosa
 import numpy as np
 import soundfile as sf
 
-BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent
-EXPORT_DIR = BACKEND_ROOT / "exports"
-EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+from ..storage import EXPORTS_DIR
 
 _FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
 _WEBM_LIKE = {".webm", ".m4a", ".mp4", ".aac"}
@@ -91,7 +89,7 @@ def mix_audio(instrumental_path: str, vocal_path: str) -> dict:
     mixed = np.clip(0.75 * instrumental + 0.95 * vocal, -1.0, 1.0)
 
     filename = f"{uuid.uuid4()}.mp3"
-    output_path = EXPORT_DIR / filename
+    output_path = EXPORTS_DIR / filename
     _write_mp3(output_path, mixed, inst_sr)
 
     return {
