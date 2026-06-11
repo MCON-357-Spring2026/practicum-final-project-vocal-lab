@@ -45,6 +45,13 @@ export function startDualTrackSync(backing, vocal, intervalMs = 200) {
   }, intervalMs);
 }
 
+export function pauseAudio(...audios) {
+  for (const audio of audios) {
+    if (!audio) continue;
+    audio.pause();
+  }
+}
+
 export function pauseAndReset(...audios) {
   for (const audio of audios) {
     if (!audio) continue;

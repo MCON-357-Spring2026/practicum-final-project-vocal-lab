@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   pauseAndReset,
+  pauseAudio,
   startDualTrackSync,
   waitForAudioReady,
 } from "../utils/audioPlayback";
@@ -44,13 +45,49 @@ export default function MixPreview({
     setError(null);
   }, [backingUrl]);
 
-  const stopMix = () => {
+  const clearSync = () => {
     if (syncRef.current) {
       window.clearInterval(syncRef.current);
       syncRef.current = null;
     }
+  };
+
+  const pauseMix = () => {
+    clearSync();
+    pauseAudio(backingRef.current);
+    setPlaying(false);
+  };
+
+  const stopMix = () => {
+    clearSync();
     pauseAndReset(backingRef.current, vocalRef.current);
     setPlaying(false);
+  };
+
+  const syncBackingToVocal = () => {
+    const backing = backingRef.current;
+    const vocal = vocalRef.current;
+    if (!backing || !vocal) return;
+    backing.currentTime = vocal.currentTime;
+  };
+
+  const startBackingWithVocal = async () => {
+    const backing = backingRef.current;
+    const vocal = vocalRef.current;
+    if (!backingUrl || !backing || !vocal) return;
+
+    try {
+      await waitForAudioReady(backing);
+      syncBackingToVocal();
+      await backing.play();
+      clearSync();
+      syncRef.current = startDualTrackSync(backing, vocal);
+      setPlaying(true);
+      setError(null);
+    } catch {
+      pauseMix();
+      setError("Could not sync backing track with vocal playback.");
+    }
   };
 
   const startMix = async () => {
@@ -67,6 +104,7 @@ export default function MixPreview({
       vocal.currentTime = 0;
       await backing.play();
       await vocal.play();
+      clearSync();
       syncRef.current = startDualTrackSync(backing, vocal);
       setPlaying(true);
     } catch {
@@ -88,24 +126,18 @@ export default function MixPreview({
   };
 
   const handleVocalPlay = async () => {
-    const backing = backingRef.current;
-    const vocal = vocalRef.current;
-    if (!backing || !vocal || !backingUrl) return;
+    await startBackingWithVocal();
+  };
 
-    try {
-      await waitForAudioReady(backing);
-      backing.currentTime = vocal.currentTime;
-      await backing.play();
-      if (syncRef.current) window.clearInterval(syncRef.current);
-      syncRef.current = startDualTrackSync(backing, vocal);
-      setPlaying(true);
-      setError(null);
-    } catch {
-      setError("Could not sync backing track with vocal playback.");
-    }
+  const handleVocalSeeked = () => {
+    syncBackingToVocal();
   };
 
   if (!backingUrl || !vocalUrl) return null;
+
+  const playerLabel = isAutoTuned
+    ? "Scrub and play — auto-tuned vocal with backing track:"
+    : "Scrub and play — vocal with backing track:";
 
   return (
     <div className="mix-preview">
@@ -120,23 +152,17 @@ export default function MixPreview({
         </button>
       </div>
 
-      {!isAutoTuned && (
-        <p className="msg-muted" style={{ marginTop: "0.75rem" }}>
-          Vocal only:
-        </p>
-      )}
-      {isAutoTuned && (
-        <p className="msg-muted" style={{ marginTop: "0.75rem" }}>
-          Auto-tune final mix — tuned vocal with backing track:
-        </p>
-      )}
+      <p className="msg-muted" style={{ marginTop: "0.75rem" }}>
+        {playerLabel}
+      </p>
       <audio
         ref={vocalRef}
         controls
         src={vocalUrl}
         preload="auto"
         onPlay={handleVocalPlay}
-        onPause={stopMix}
+        onPause={pauseMix}
+        onSeeked={handleVocalSeeked}
         onEnded={stopMix}
       />
 

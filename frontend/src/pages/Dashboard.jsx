@@ -55,20 +55,28 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="page">
-      <header className="page-hero">
-        <p className="page-hero__tagline">
-          SoundLab is a web app that turns any song into a backing track, guides you through
-          recording vocals, and exports a finished mix with AI-assisted pitch correction.
-        </p>
-      </header>
-
+    <div className={`page${!token ? " page--auth" : ""}`}>
       {!token ? (
-        <div className="card form-panel">
-          <AuthForm onAuthenticated={handleAuthenticated} />
+        <div className="auth-page">
+          <header className="page-hero page-hero--centered">
+            <p className="page-hero__tagline">
+              SoundLab is a web app that turns any song into a backing track, guides you through
+              recording vocals, and exports a finished mix with AI-assisted pitch correction.
+            </p>
+          </header>
+
+          <div className="card form-panel auth-page__form">
+            <AuthForm onAuthenticated={handleAuthenticated} />
+          </div>
         </div>
       ) : (
         <>
+          <header className="page-hero">
+            <p className="page-hero__tagline">
+              SoundLab is a web app that turns any song into a backing track, guides you through
+              recording vocals, and exports a finished mix with AI-assisted pitch correction.
+            </p>
+          </header>
           <div className="toolbar">
             <span className="toolbar__status msg-success">Logged in</span>
             <button type="button" className="btn-ghost" onClick={logout}>

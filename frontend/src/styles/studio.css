@@ -306,12 +306,39 @@ ul {
   margin-bottom: 2rem;
 }
 
+.page-hero--centered {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
 .page-hero__tagline {
   color: var(--text-muted);
   font-size: clamp(0.95rem, 2.5vw, 1.05rem);
   max-width: 40rem;
   margin: 0;
   line-height: 1.65;
+}
+
+.page--auth {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100svh - var(--header-offset) - 2rem);
+}
+
+.auth-page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  margin: auto 0;
+  padding: 1rem 0 2rem;
+}
+
+.auth-page__form {
+  width: 100%;
 }
 
 /* Cards & panels */
@@ -515,6 +542,16 @@ button:disabled {
 
 .form-panel {
   max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.auth-form h2 {
+  text-align: center;
+}
+
+.auth-form .msg-muted {
+  text-align: center;
 }
 
 .form-field {
@@ -664,6 +701,12 @@ audio {
 .danger-zone .msg-muted {
   margin-bottom: 1rem;
   font-size: 0.9rem;
+}
+
+.new-take-banner {
+  margin-top: 1.5rem;
+  border-color: var(--border-bright);
+  background: var(--cyan-glow-soft);
 }
 
 /* Back link */
