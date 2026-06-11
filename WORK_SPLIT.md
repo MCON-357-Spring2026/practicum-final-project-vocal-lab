@@ -14,9 +14,12 @@
 |-----------|--------|
 | MVP works locally (upload → record → auto-tune → export) | **Done** |
 | Projects API (backend) | **Done** (merged) |
-| Dashboard + project UI (frontend) | **Done** (on `rena/dashboard-ui`, not merged to `main` yet) |
+| Dashboard + project UI (frontend) | **Done** (merged to `main`) |
 | SoundLab styling + logo + decorations | **Done** |
 | Export without system ffmpeg (`imageio-ffmpeg` + `lameenc`) | **Done** |
+| Frontend run/deploy docs | **Done** (`docs/frontend.md`) |
+| Delete project UI | **Done** |
+| Legacy UI cleanup | **Done** |
 | Deploy to production | **Not started** |
 
 ---
@@ -61,20 +64,21 @@ Full spec: **`docs/API_CONTRACT.md`**
 | Record → save vocal | `VocalRecorder.jsx`, `ProjectDetail.jsx` |
 | Remove vocals, re-detect key, auto-tune, export | `ProjectDetail.jsx` |
 | Playback for all assets + download export | `ProjectDetail.jsx` |
+| Discard vocal & re-record | `ProjectDetail.jsx` → `clearVocal()` |
+| Delete project | `ProjectDetail.jsx` → `deleteProject()` |
 | Loading / error states | `ProjectDetail.jsx`, `Dashboard.jsx` |
 | SoundLab theme (presentation palette) | `src/styles/studio.css` |
 | Logo + side decorations | `AppShell.jsx`, `PageDecorations.jsx`, `assets/` |
+| Frontend run/deploy docs | `docs/frontend.md`, `frontend/README.md` |
+| Legacy UI removed | Deleted `AudioUpload.jsx`, `PlaybackExport.jsx`, `mockProjects.js` |
+| Mobile polish (buttons, meta row, spacing) | `studio.css` |
 
 ### Still to do
 
 | # | Task | Priority | Files / notes |
 |---|------|----------|----------------|
-| 1 | **Merge PR** — "Add dashboard, routing, and project UI" | High | Open PR from `rena/dashboard-ui` → `main` |
-| 2 | **Frontend run/deploy docs** | High | `docs/frontend.md` or update `frontend/README.md` |
-| 3 | **Deploy React** (Vercel / Netlify) | High | Set `VITE_API_URL` to prod backend URL |
-| 4 | Delete project button (API exists, no UI) | Medium | `ProjectDetail.jsx` → `deleteProject()` |
-| 5 | Remove legacy UI (optional cleanup) | Low | `AudioUpload.jsx`, `PlaybackExport.jsx` — not routed, safe to delete later |
-| 6 | Final UI polish from demo feedback | Low | spacing, mobile pass, copy tweaks |
+| 1 | **Deploy React** (Vercel / Netlify) | High | Set `VITE_API_URL` to prod backend URL — **blocked until partner deploys API** |
+| 2 | Final UI polish from demo feedback | Low | spacing, copy tweaks after class review |
 
 ### Do NOT touch
 
@@ -114,7 +118,7 @@ Full spec: **`docs/API_CONTRACT.md`**
 | 4 | **Persistent file storage** | High | Local disk is ephemeral on most hosts — persistent volume or S3 |
 | 5 | Auth on legacy routes (optional hardening) | Low | `/recording/*`, `/audio/mix` — UI no longer uses these |
 | 6 | Demucs / vocal removal on prod | Medium | Heavy (RAM + long requests); may timeout on free tier — document demo limits |
-| 7 | Review + merge Rena's frontend PR | High | After Rena opens PR |
+| 7 | Review + merge Rena's frontend PR | **Done** | Merged to `main` |
 
 ### Do NOT touch
 
@@ -126,7 +130,7 @@ Full spec: **`docs/API_CONTRACT.md`**
 
 | Task | Owner | Status |
 |------|-------|--------|
-| Merge frontend PR to `main` | Rena | Todo |
+| Merge frontend PR to `main` | Rena | **Done** |
 | Full flow test on `main` locally | Both | Todo |
 | Deploy FastAPI | Partner | Todo |
 | PostgreSQL + migrations | Partner | Todo |
@@ -160,12 +164,11 @@ Instrumental upload → record → auto-tune → export is the most reliable pat
 ## Suggested order (from here)
 
 ```
-1. Rena   → Open + merge frontend PR
-2. Both   → Test full flow on main (both laptops)
-3. Partner → Deploy backend + PostgreSQL + env + storage plan
-4. Rena   → Deploy frontend with VITE_API_URL
-5. Both   → Test on production URLs (HTTPS required for mic)
-6. Optional polish → delete project UI, docs, legacy cleanup
+1. Both   → Test full flow on main (both laptops) — if not done yet
+2. Partner → Deploy backend + PostgreSQL + env + storage plan
+3. Rena   → Deploy frontend with VITE_API_URL (send URL to partner for CORS)
+4. Both   → Test on production URLs (HTTPS required for mic)
+5. Optional polish → demo feedback tweaks
 ```
 
 ---

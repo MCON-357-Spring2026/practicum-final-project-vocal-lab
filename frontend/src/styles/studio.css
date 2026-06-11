@@ -284,7 +284,7 @@ ul {
   max-width: var(--max-width);
   width: 100%;
   margin: 0 auto;
-  padding: 1.5rem 1.25rem 3rem;
+  padding: clamp(1rem, 3vw, 1.5rem) clamp(0.85rem, 3vw, 1.25rem) 3rem;
 }
 
 .page {
@@ -308,7 +308,7 @@ ul {
 
 .page-hero__tagline {
   color: var(--text-muted);
-  font-size: 1rem;
+  font-size: clamp(0.95rem, 2.5vw, 1.05rem);
   max-width: 40rem;
   margin: 0;
   line-height: 1.65;
@@ -505,6 +505,12 @@ button:disabled {
   box-shadow: 0 0 14px rgba(255, 92, 138, 0.15);
 }
 
+.btn-danger:hover:not(:disabled) {
+  background: rgba(255, 92, 138, 0.22);
+  border-color: var(--error);
+  box-shadow: 0 0 20px rgba(255, 92, 138, 0.25);
+}
+
 /* Forms */
 
 .form-panel {
@@ -618,6 +624,46 @@ audio {
 .meta-row strong {
   color: var(--text);
   font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .meta-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .btn-row button {
+    width: 100%;
+  }
+
+  .toolbar {
+    gap: 0.5rem;
+  }
+
+  .toolbar__status {
+    width: 100%;
+    margin-right: 0;
+  }
+}
+
+/* Destructive actions — separated from main workflow */
+
+.danger-zone {
+  margin-top: 2.5rem;
+  padding: 1.25rem 1.35rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 92, 138, 0.28);
+  background: rgba(255, 92, 138, 0.04);
+}
+
+.danger-zone .neon-label {
+  margin-bottom: 0.5rem;
+}
+
+.danger-zone .msg-muted {
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
 }
 
 /* Back link */

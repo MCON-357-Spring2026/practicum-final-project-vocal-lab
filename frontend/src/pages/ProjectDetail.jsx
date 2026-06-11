@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -10,6 +10,7 @@ import StatusBadge from "../components/StatusBadge";
 import {
 
   clearVocal,
+  deleteProject,
   exportProject,
   fetchProject,
   pitchCorrect,
@@ -39,6 +40,7 @@ import {
 export default function ProjectDetail() {
 
   const { projectId } = useParams();
+  const navigate = useNavigate();
 
   const [project, setProject] = useState(null);
 
@@ -184,6 +186,25 @@ export default function ProjectDetail() {
       "? You can record again from scratch.";
     if (!window.confirm(message)) return;
     runAction("rerecord", () => clearVocal(projectId));
+  };
+
+  const handleDelete = async () => {
+    if (!project) return;
+
+    const message =
+      `Delete "${project.name}"? All uploads, vocals, and exports will be removed. This cannot be undone.`;
+    if (!window.confirm(message)) return;
+
+    setBusyAction("delete");
+    setError(null);
+    try {
+      await deleteProject(projectId);
+      navigate("/");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyAction(null);
+    }
   };
 
   if (loading) {
@@ -543,6 +564,21 @@ export default function ProjectDetail() {
         />
 
       )}
+
+      <section className="danger-zone" aria-label="Delete project">
+        <h2 className="neon-label">Danger zone</h2>
+        <p className="msg-muted">
+          Permanently remove this project and all associated audio files from your account.
+        </p>
+        <button
+          type="button"
+          className="btn-danger"
+          onClick={handleDelete}
+          disabled={Boolean(busyAction)}
+        >
+          {busyAction === "delete" ? "Deleting…" : "Delete project"}
+        </button>
+      </section>
 
     </div>
 
