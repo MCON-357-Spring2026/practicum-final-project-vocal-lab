@@ -85,7 +85,8 @@ export function projectActions(project) {
       !hasInstrumental &&
       project.status === PROJECT_STATUS.READY_TO_RECORD,
     canRedetectKey:
-      hasInstrumental && project.status === PROJECT_STATUS.READY_TO_RECORD,
+      project.status === PROJECT_STATUS.READY_TO_RECORD &&
+      Boolean(backingTrackFilename(project)),
     canRecord:
       project.status === PROJECT_STATUS.READY_TO_RECORD && backingTrackFilename(project),
     canAutoTune:

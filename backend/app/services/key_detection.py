@@ -8,6 +8,8 @@ via POST /audio/recordings/{file_id}/redetect-key (instrumental track).
 import librosa
 import numpy as np
 
+from .audio_mixer import _load_audio
+
 
 KEYS_MAJOR = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
@@ -25,7 +27,7 @@ def detect_key(file_path: str) -> dict:
     Returns: {"key": "C", "mode": "major", "confidence": 0.85}
     confidence is correlation strength (higher = more confident).
     """
-    y, sr = librosa.load(file_path, mono=True)
+    y, sr = _load_audio(file_path)
 
     # Average chroma across time to get a single pitch-class fingerprint.
     chroma = librosa.feature.chroma_cqt(y=y, sr=sr)

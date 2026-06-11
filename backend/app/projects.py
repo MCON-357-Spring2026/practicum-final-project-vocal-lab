@@ -129,7 +129,7 @@ async def _run_key_detection(
     db: Session,
     *,
     key_source: str,
-) -> None:
+) -> bool:
     try:
         result = await run_in_threadpool(detect_key, str(file_path))
         project.detected_key = result["key"]
@@ -138,8 +138,10 @@ async def _run_key_detection(
         project.key_source = key_source
         db.commit()
         db.refresh(project)
+        return True
     except Exception:
         logger.exception("Key detection failed for project %s", project.project_id)
+        return False
 
 
 @router.post("", response_model=ProjectResponse)
@@ -296,22 +298,35 @@ async def redetect_key_for_project(
 ):
     project = _get_user_project(project_id, db, current_user)
 
-    if not project.instrumental_stored_as:
+    if project.instrumental_stored_as:
+        file_path = INSTRUMENTALS_DIR / project.instrumental_stored_as
+        key_source = "instrumental"
+    elif project.original_stored_as:
+        file_path = UPLOAD_DIR / project.original_stored_as
+        key_source = "original"
+    else:
         raise HTTPException(
             status_code=400,
-            detail="Remove vocals first or upload an instrumental before re-detecting key",
+            detail="No audio file available for key detection",
         )
 
-    instrumental_path = INSTRUMENTALS_DIR / project.instrumental_stored_as
-    if not instrumental_path.exists():
-        raise HTTPException(status_code=404, detail="Instrumental file not found")
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Audio file not found")
 
-    await _run_key_detection(
-        project,
-        instrumental_path,
-        db,
-        key_source="instrumental",
-    )
+    project.status = "processing"
+    db.commit()
+
+    await _run_key_detection(project, file_path, db, key_source=key_source)
+
+    project.status = "ready_to_record"
+    db.commit()
+    db.refresh(project)
+
+    if not project.detected_key:
+        raise HTTPException(
+            status_code=500,
+            detail="Key detection failed — try again or use a different audio file",
+        )
 
     return _project_to_item(project)
 

@@ -313,16 +313,15 @@ export default function ProjectDetail() {
 
           <StatusBadge status={project.status} />
 
-          {project.detected_key && (
-
+          {project.detected_key ? (
             <span>
-
               Key: <strong>{project.detected_key} {project.mode}</strong>
-
               {project.key_source ? ` (${project.key_source})` : ""}
-
             </span>
-
+          ) : (
+            project.status !== PROJECT_STATUS.PROCESSING && (
+              <span className="msg-muted">Key not detected yet</span>
+            )
           )}
 
         </div>
@@ -521,7 +520,11 @@ export default function ProjectDetail() {
 
             >
 
-              {busyAction === "redetect-key" ? "Detecting key…" : "Re-detect key"}
+              {busyAction === "redetect-key"
+                ? "Detecting key…"
+                : project.detected_key
+                  ? "Re-detect key"
+                  : "Detect key"}
 
             </button>
 
