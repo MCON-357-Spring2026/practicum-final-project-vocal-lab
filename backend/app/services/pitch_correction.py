@@ -4,6 +4,8 @@ import numpy as np
 import librosa
 import soundfile as sf
 
+from .audio_mixer import _load_audio
+
 CORRECTED_DIR = "corrected"
 os.makedirs(CORRECTED_DIR, exist_ok=True)
 
@@ -41,7 +43,7 @@ def apply_basic_pitch_correction(vocal_path: str, song_key: str):
     if not os.path.exists(vocal_path):
         raise FileNotFoundError("Vocal file not found")
 
-    y, sr = librosa.load(vocal_path, sr=None, mono=True)
+    y, sr = _load_audio(vocal_path)
 
     allowed_notes = get_major_scale_notes(song_key)
 

@@ -151,10 +151,14 @@ export default function AudioUpload({ onKeyDetected, onInstrumentalReady }) {
     setError(null);
 
     try {
+      const body = new URLSearchParams();
+      body.append("username", email);
+      body.append("password", password);
+
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
       });
 
       const data = await res.json();
