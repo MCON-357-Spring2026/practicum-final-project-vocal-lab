@@ -9,12 +9,8 @@ import shutil
 import subprocess
 import sys
 import uuid
-from pathlib import Path
 
-# Absolute path so Demucs works regardless of server working directory.
-BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent
-INSTRUMENTALS_DIR = BACKEND_ROOT / "instrumentals"
-INSTRUMENTALS_DIR.mkdir(parents=True, exist_ok=True)
+from ..storage import INSTRUMENTALS_DIR
 
 
 def remove_vocals(input_file_path: str):
