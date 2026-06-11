@@ -82,7 +82,7 @@ export default function AuthForm({ onAuthenticated }) {
 
   return (
 
-    <section>
+    <section className="auth-form">
 
       <h2>{isRegister ? "Create account" : "Log in"}</h2>
 

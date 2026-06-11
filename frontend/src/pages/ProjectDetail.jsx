@@ -9,7 +9,6 @@ import StatusBadge from "../components/StatusBadge";
 
 import {
 
-  clearVocal,
   deleteProject,
   exportProject,
   fetchProject,
@@ -35,6 +34,8 @@ import {
 
 } from "../api/projectContract";
 
+import { downloadFile } from "../utils/downloadFile";
+
 
 
 export default function ProjectDetail() {
@@ -49,6 +50,7 @@ export default function ProjectDetail() {
   const [error, setError] = useState(null);
 
   const [busyAction, setBusyAction] = useState(null);
+  const [newTakeMode, setNewTakeMode] = useState(false);
   const backingAudioRef = useRef(null);
 
 
@@ -162,9 +164,17 @@ export default function ProjectDetail() {
 
 
   const handleSaveVocal = async (blob) => {
-
-    await runAction("save-vocal", () => saveVocal(projectId, blob));
-
+    setBusyAction("save-vocal");
+    setError(null);
+    try {
+      const updated = await saveVocal(projectId, blob);
+      setProject(updated);
+      setNewTakeMode(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyAction(null);
+    }
   };
 
 
@@ -179,13 +189,30 @@ export default function ProjectDetail() {
 
     runAction("export", () => exportProject(projectId));
 
-  const handleRerecord = () => {
-    const message =
-      "Discard your vocal" +
-      (project?.export_stored_as ? " and export" : "") +
-      "? You can record again from scratch.";
-    if (!window.confirm(message)) return;
-    runAction("rerecord", () => clearVocal(projectId));
+  const handleStartNewTake = () => {
+    setNewTakeMode(true);
+    setError(null);
+  };
+
+  const handleCancelNewTake = () => {
+    setNewTakeMode(false);
+  };
+
+  const handleDownloadExport = async () => {
+    if (!project?.export_stored_as) return;
+
+    setBusyAction("download");
+    setError(null);
+    try {
+      await downloadFile(
+        mediaUrls.export(project.export_stored_as),
+        project.export_stored_as,
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyAction(null);
+    }
   };
 
   const handleDelete = async () => {
@@ -264,6 +291,7 @@ export default function ProjectDetail() {
   const actions = projectActions(project);
 
   const backingUrl = backingTrackUrl(project);
+  const showRecorder = actions.canRecord || newTakeMode;
 
 
 
@@ -368,10 +396,12 @@ export default function ProjectDetail() {
           <div className="media-block">
 
             <h3>
-              {project.status === PROJECT_STATUS.TUNED ||
-              project.status === PROJECT_STATUS.EXPORTED
-                ? "Auto-tune final mix"
-                : "Vocal"}
+              {newTakeMode
+                ? "Previous take"
+                : project.status === PROJECT_STATUS.TUNED ||
+                    project.status === PROJECT_STATUS.EXPORTED
+                  ? "Your last take"
+                  : "Vocal"}
             </h3>
 
             <MixPreview
@@ -389,7 +419,7 @@ export default function ProjectDetail() {
               }
             />
 
-            {actions.canAutoTune && (
+            {actions.canAutoTune && !newTakeMode && (
               <div className="btn-row" style={{ marginTop: "1rem" }}>
                 <button
                   type="button"
@@ -404,8 +434,7 @@ export default function ProjectDetail() {
 
             {project.status === PROJECT_STATUS.TUNED && (
               <p className="msg-muted" style={{ marginTop: "0.5rem" }}>
-                Auto-tune applied. Use Export mix below for the downloadable MP3, or re-record
-                to try again.
+                Auto-tune applied. Export your mix below, or use Record new take to try again.
               </p>
             )}
 
@@ -419,28 +448,35 @@ export default function ProjectDetail() {
 
           <div className="media-block">
 
-            <h3>Export</h3>
+            <h3>{newTakeMode ? "Previous export" : "Export"}</h3>
 
             <audio controls src={mediaUrls.export(project.export_stored_as)} />
 
-            <p style={{ marginTop: "0.75rem" }}>
-
-              <a
-
-                href={mediaUrls.export(project.export_stored_as)}
-
-                download
-
+            <div className="btn-row" style={{ marginTop: "0.75rem" }}>
+              <button
+                type="button"
                 className="btn-secondary"
-
-                style={{ display: "inline-block", padding: "0.5rem 1rem", borderRadius: "10px" }}
-
+                onClick={handleDownloadExport}
+                disabled={Boolean(busyAction)}
               >
+                {busyAction === "download" ? "Downloading…" : "Download export"}
+              </button>
 
-                Download export
+              {actions.canStartNewTake && !newTakeMode && (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleStartNewTake}
+                  disabled={Boolean(busyAction)}
+                >
+                  Record new take
+                </button>
+              )}
+            </div>
 
-              </a>
-
+            <p className="msg-muted" style={{ marginTop: "0.75rem" }}>
+              Your export stays on this project — download it again anytime. Record new take
+              keeps this export until you save a different vocal.
             </p>
 
           </div>
@@ -491,7 +527,7 @@ export default function ProjectDetail() {
 
           )}
 
-          {actions.canExport && (
+          {actions.canExport && !newTakeMode && (
 
             <button
 
@@ -511,21 +547,21 @@ export default function ProjectDetail() {
 
           )}
 
-          {actions.canRerecord && (
+          {actions.canStartNewTake && project.status !== PROJECT_STATUS.EXPORTED && !newTakeMode && (
 
             <button
 
               type="button"
 
-              className="btn-danger"
+              className="btn-secondary"
 
-              onClick={handleRerecord}
+              onClick={handleStartNewTake}
 
               disabled={Boolean(busyAction)}
 
             >
 
-              {busyAction === "rerecord" ? "Discarding…" : "Discard vocal & re-record"}
+              Record new take
 
             </button>
 
@@ -549,7 +585,25 @@ export default function ProjectDetail() {
 
 
 
-      {actions.canRecord && (
+      {newTakeMode && (
+        <div className="card new-take-banner">
+          <p className="msg-muted" style={{ margin: 0 }}>
+            Recording a new take — your previous vocal and export stay available until you save
+            this one. No need to re-upload or remove vocals.
+          </p>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={handleCancelNewTake}
+            disabled={Boolean(busyAction)}
+            style={{ marginTop: "0.75rem" }}
+          >
+            Cancel new take
+          </button>
+        </div>
+      )}
+
+      {showRecorder && (
 
         <VocalRecorder
 

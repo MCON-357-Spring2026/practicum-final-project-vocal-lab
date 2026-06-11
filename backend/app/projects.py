@@ -340,6 +340,10 @@ async def save_vocal_to_project(
         _unlink_if_exists(RECORDINGS_DIR / project.vocal_stored_as)
         _unlink_if_exists(CORRECTED_DIR / project.vocal_stored_as)
 
+    if project.export_stored_as:
+        _unlink_if_exists(EXPORTS_DIR / project.export_stored_as)
+        project.export_stored_as = None
+
     vocal_name = f"{project.project_id}_vocal.{extension}"
     (RECORDINGS_DIR / vocal_name).write_bytes(contents)
 
