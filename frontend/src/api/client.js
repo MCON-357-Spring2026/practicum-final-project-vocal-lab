@@ -28,7 +28,14 @@ export async function apiFetch(path, options = {}) {
     }
   }
 
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers });
+  let response;
+  try {
+    response = await fetch(`${API_URL}${path}`, { ...options, headers });
+  } catch {
+    throw new Error(
+      "Could not reach the API. The backend may be starting up (wait 30s and retry) or the server database may be misconfigured.",
+    );
+  }
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
