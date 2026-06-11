@@ -88,7 +88,11 @@ export function projectActions(project) {
       hasInstrumental && project.status === PROJECT_STATUS.READY_TO_RECORD,
     canRecord:
       project.status === PROJECT_STATUS.READY_TO_RECORD && backingTrackFilename(project),
-    canAutoTune: project.status === PROJECT_STATUS.VOCAL_RECORDED,
+    canAutoTune:
+      Boolean(project.vocal_stored_as) &&
+      Boolean(project.detected_key) &&
+      (project.status === PROJECT_STATUS.VOCAL_RECORDED ||
+        project.status === PROJECT_STATUS.TUNED),
     canRerecord:
       Boolean(project.vocal_stored_as) &&
       project.status !== PROJECT_STATUS.PROCESSING &&

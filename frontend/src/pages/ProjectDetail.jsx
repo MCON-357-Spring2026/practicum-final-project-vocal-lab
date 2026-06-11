@@ -1,7 +1,8 @@
 import { Link, useParams } from "react-router-dom";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import MixPreview from "../components/MixPreview";
 import VocalRecorder from "../components/VocalRecorder";
 
 import StatusBadge from "../components/StatusBadge";
@@ -46,6 +47,7 @@ export default function ProjectDetail() {
   const [error, setError] = useState(null);
 
   const [busyAction, setBusyAction] = useState(null);
+  const backingAudioRef = useRef(null);
 
 
 
@@ -332,7 +334,7 @@ export default function ProjectDetail() {
 
             <h3>Backing track (for recording)</h3>
 
-            <audio controls src={backingUrl} />
+            <audio ref={backingAudioRef} controls src={backingUrl} preload="auto" />
 
           </div>
 
@@ -344,9 +346,47 @@ export default function ProjectDetail() {
 
           <div className="media-block">
 
-            <h3>Vocal</h3>
+            <h3>
+              {project.status === PROJECT_STATUS.TUNED ||
+              project.status === PROJECT_STATUS.EXPORTED
+                ? "Auto-tune final mix"
+                : "Vocal"}
+            </h3>
 
-            <audio controls src={vocalUrl(project)} />
+            <MixPreview
+              backingUrl={backingUrl}
+              vocalUrl={vocalUrl(project)}
+              label={
+                project.status === PROJECT_STATUS.TUNED ||
+                project.status === PROJECT_STATUS.EXPORTED
+                  ? "Play auto-tune final mix"
+                  : "Play vocal with backing track"
+              }
+              isAutoTuned={
+                project.status === PROJECT_STATUS.TUNED ||
+                project.status === PROJECT_STATUS.EXPORTED
+              }
+            />
+
+            {actions.canAutoTune && (
+              <div className="btn-row" style={{ marginTop: "1rem" }}>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleAutoTune}
+                  disabled={Boolean(busyAction)}
+                >
+                  {busyAction === "auto-tune" ? "Applying auto-tune…" : "Auto-tune vocal"}
+                </button>
+              </div>
+            )}
+
+            {project.status === PROJECT_STATUS.TUNED && (
+              <p className="msg-muted" style={{ marginTop: "0.5rem" }}>
+                Auto-tune applied. Use Export mix below for the downloadable MP3, or re-record
+                to try again.
+              </p>
+            )}
 
           </div>
 
@@ -430,26 +470,6 @@ export default function ProjectDetail() {
 
           )}
 
-          {actions.canAutoTune && (
-
-            <button
-
-              type="button"
-
-              className="btn-primary"
-
-              onClick={handleAutoTune}
-
-              disabled={Boolean(busyAction)}
-
-            >
-
-              {busyAction === "auto-tune" ? "Applying auto-tune…" : "Auto-tune"}
-
-            </button>
-
-          )}
-
           {actions.canExport && (
 
             <button
@@ -513,6 +533,8 @@ export default function ProjectDetail() {
         <VocalRecorder
 
           instrumentalUrl={backingUrl ?? ""}
+
+          backingAudioRef={backingAudioRef}
 
           onSaveVocal={handleSaveVocal}
 

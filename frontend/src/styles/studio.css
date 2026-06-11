@@ -674,6 +674,15 @@ audio {
   box-shadow: 0 0 32px var(--magenta-glow-soft), 0 0 48px var(--cyan-glow-soft);
 }
 
+/* Hidden playback element for recording — must stay in DOM for play() */
+.backing-track-audio {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .recording-indicator {
   color: var(--neon-magenta);
   font-weight: 700;
