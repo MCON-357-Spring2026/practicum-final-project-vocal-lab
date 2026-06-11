@@ -73,6 +73,16 @@ def _unlink_if_exists(path: Path) -> None:
         path.unlink()
 
 
+def _clear_vocal_files(project: Project) -> None:
+    if project.vocal_stored_as:
+        _unlink_if_exists(RECORDINGS_DIR / project.vocal_stored_as)
+        _unlink_if_exists(CORRECTED_DIR / project.vocal_stored_as)
+    for path in RECORDINGS_DIR.glob(f"{project.project_id}_vocal.*"):
+        _unlink_if_exists(path)
+    if project.export_stored_as:
+        _unlink_if_exists(EXPORTS_DIR / project.export_stored_as)
+
+
 def _delete_project_files(project: Project) -> None:
     if project.original_stored_as:
         _unlink_if_exists(UPLOAD_DIR / project.original_stored_as)
@@ -338,6 +348,29 @@ async def save_vocal_to_project(
 
     project.vocal_stored_as = vocal_name
     project.status = "vocal_recorded"
+    db.commit()
+    db.refresh(project)
+
+    return _project_to_item(project)
+
+
+@router.delete("/{project_id}/vocal", response_model=ProjectResponse)
+def clear_vocal_for_project(
+    project_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Remove saved vocal (and export) so the user can record again."""
+    project = _get_user_project(project_id, db, current_user)
+
+    if not project.vocal_stored_as:
+        raise HTTPException(status_code=400, detail="No vocal recording on this project")
+
+    _clear_vocal_files(project)
+
+    project.vocal_stored_as = None
+    project.export_stored_as = None
+    project.status = "ready_to_record"
     db.commit()
     db.refresh(project)
 

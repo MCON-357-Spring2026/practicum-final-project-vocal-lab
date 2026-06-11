@@ -5,13 +5,13 @@ All routes are mounted under /auth (see main.py).
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from .database import SessionLocal
 from .models import User
-from .schemas import Token, UserCreate, UserLogin
+from .schemas import Token, UserCreate
 from .utils import (
     ALGORITHM,
     SECRET_KEY,
@@ -61,15 +61,18 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-def login(user: UserLogin, db: Session = Depends(get_db)):
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
     """
-    Log in with email + password.
+    Log in with email + password (form field `username` = email).
 
+    Accepts application/x-www-form-urlencoded so Swagger Authorize works.
     On success, returns {"access_token": "...", "token_type": "bearer"}.
-    Client uses access_token on GET /auth/me and other protected routes.
     """
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if not db_user or not verify_password(user.password, db_user.password_hash):
+    db_user = db.query(User).filter(User.email == form_data.username).first()
+    if not db_user or not verify_password(form_data.password, db_user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
         )
