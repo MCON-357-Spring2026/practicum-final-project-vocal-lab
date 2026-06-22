@@ -1,3 +1,5 @@
+// Thin fetch wrapper: attaches the auth token, sets JSON/form headers, and
+// normalizes API error responses into thrown Error messages.
 import { API_URL } from "./projectContract";
 
 export function getToken() {

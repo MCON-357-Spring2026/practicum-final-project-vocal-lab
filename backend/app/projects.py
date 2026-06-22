@@ -6,6 +6,7 @@ Mounted under /projects (see main.py).
 
 import logging
 import uuid
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -13,8 +14,8 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from .auth import get_current_user, get_db
-from .models import Project, User
-from .schemas import ProjectResponse
+from .models import Project, Take, User
+from .schemas import ProjectResponse, ProjectUpdate, TakeUpdate
 from .services.audio_mixer import mix_audio
 from .services.key_detection import detect_key
 from .services.pitch_correction import apply_basic_pitch_correction
@@ -35,7 +36,24 @@ ALLOWED_EXTENSIONS = {"mp3", "wav", "ogg", "m4a", "flac", "webm"}
 UPLOAD_TYPES = {"full_song", "instrumental"}
 
 
+def _take_to_item(take: Take) -> dict:
+    return {
+        "take_id": take.take_id,
+        "name": take.name,
+        "vocal_stored_as": take.vocal_stored_as,
+        "corrected_stored_as": take.corrected_stored_as,
+        "export_stored_as": take.export_stored_as,
+        "is_tuned": take.is_tuned,
+        "created_at": take.created_at,
+    }
+
+
 def _project_to_item(project: Project) -> dict:
+    takes = sorted(
+        project.takes,
+        key=lambda t: (t.created_at or datetime.min, t.id),
+        reverse=True,
+    )
     return {
         "id": project.id,
         "project_id": project.project_id,
@@ -50,8 +68,56 @@ def _project_to_item(project: Project) -> dict:
         "instrumental_stored_as": project.instrumental_stored_as,
         "vocal_stored_as": project.vocal_stored_as,
         "export_stored_as": project.export_stored_as,
+        "takes": [_take_to_item(take) for take in takes],
         "created_at": project.created_at,
     }
+
+
+def _get_take(project: Project, take_id: str) -> Take:
+    for take in project.takes:
+        if take.take_id == take_id:
+            return take
+    raise HTTPException(status_code=404, detail="Take not found")
+
+
+def _resolve_take_vocal_path(take: Take) -> Path:
+    """Best vocal file for a take: auto-tuned if available, else the raw recording."""
+    if take.corrected_stored_as:
+        corrected = CORRECTED_DIR / take.corrected_stored_as
+        if corrected.exists():
+            return corrected
+
+    if take.vocal_stored_as:
+        recording = RECORDINGS_DIR / take.vocal_stored_as
+        if recording.exists():
+            return recording
+
+    raise HTTPException(status_code=404, detail="Take vocal file not found")
+
+
+def _delete_take_files(take: Take) -> None:
+    if take.vocal_stored_as:
+        _unlink_if_exists(RECORDINGS_DIR / take.vocal_stored_as)
+    if take.corrected_stored_as:
+        _unlink_if_exists(CORRECTED_DIR / take.corrected_stored_as)
+    if take.export_stored_as:
+        _unlink_if_exists(EXPORTS_DIR / take.export_stored_as)
+
+
+def _sync_project_status(project: Project) -> None:
+    """Keep project.status meaningful for the dashboard, based on its takes."""
+    if project.status == "processing":
+        return
+
+    takes = project.takes
+    if not takes:
+        project.status = "ready_to_record"
+    elif any(take.export_stored_as for take in takes):
+        project.status = "exported"
+    elif any(take.is_tuned for take in takes):
+        project.status = "tuned"
+    else:
+        project.status = "vocal_recorded"
 
 
 def _get_user_project(project_id: str, db: Session, current_user: User) -> Project:
@@ -225,6 +291,27 @@ def get_project(
     return _project_to_item(project)
 
 
+@router.patch("/{project_id}", response_model=ProjectResponse)
+def update_project(
+    project_id: str,
+    payload: ProjectUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Rename a project."""
+    project = _get_user_project(project_id, db, current_user)
+
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Project name cannot be empty")
+
+    project.name = name
+    db.commit()
+    db.refresh(project)
+
+    return _project_to_item(project)
+
+
 @router.delete("/{project_id}")
 def delete_project(
     project_id: str,
@@ -232,6 +319,8 @@ def delete_project(
     current_user: User = Depends(get_current_user),
 ):
     project = _get_user_project(project_id, db, current_user)
+    for take in project.takes:
+        _delete_take_files(take)
     _delete_project_files(project)
     db.delete(project)
     db.commit()
@@ -452,6 +541,195 @@ async def export_project_mix(
 
     project.export_stored_as = result["filename"]
     project.status = "exported"
+    db.commit()
+    db.refresh(project)
+
+    return _project_to_item(project)
+
+
+# --- Takes: multiple named vocal recordings per project ---
+
+
+@router.post("/{project_id}/takes", response_model=ProjectResponse)
+async def create_take(
+    project_id: str,
+    file: UploadFile = File(...),
+    name: str | None = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Save a new vocal recording as its own take ("Take 1", "Take 2", …)."""
+    project = _get_user_project(project_id, db, current_user)
+
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Filename is required")
+
+    extension = Path(file.filename).suffix.lstrip(".").lower() or "webm"
+    if extension not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Unsupported vocal file type")
+
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded vocal is empty")
+
+    take_id = str(uuid.uuid4())
+    vocal_name = f"{take_id}_vocal.{extension}"
+    (RECORDINGS_DIR / vocal_name).write_bytes(contents)
+
+    take_name = (name or "").strip() or f"Take {len(project.takes) + 1}"
+
+    take = Take(
+        take_id=take_id,
+        project_id=project.id,
+        name=take_name,
+        vocal_stored_as=vocal_name,
+        is_tuned=False,
+    )
+    db.add(take)
+    db.commit()
+    db.refresh(project)
+
+    _sync_project_status(project)
+    db.commit()
+    db.refresh(project)
+
+    return _project_to_item(project)
+
+
+@router.patch("/{project_id}/takes/{take_id}", response_model=ProjectResponse)
+def rename_take(
+    project_id: str,
+    take_id: str,
+    payload: TakeUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Rename a take."""
+    project = _get_user_project(project_id, db, current_user)
+    take = _get_take(project, take_id)
+
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Take name cannot be empty")
+
+    take.name = name
+    db.commit()
+    db.refresh(project)
+
+    return _project_to_item(project)
+
+
+@router.delete("/{project_id}/takes/{take_id}", response_model=ProjectResponse)
+def delete_take(
+    project_id: str,
+    take_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a take and its audio files."""
+    project = _get_user_project(project_id, db, current_user)
+    take = _get_take(project, take_id)
+
+    _delete_take_files(take)
+    db.delete(take)
+    db.commit()
+    db.refresh(project)
+
+    _sync_project_status(project)
+    db.commit()
+    db.refresh(project)
+
+    return _project_to_item(project)
+
+
+@router.post("/{project_id}/takes/{take_id}/pitch-correct", response_model=ProjectResponse)
+async def pitch_correct_take(
+    project_id: str,
+    take_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Auto-tune a take toward the project's detected key."""
+    project = _get_user_project(project_id, db, current_user)
+    take = _get_take(project, take_id)
+
+    if not project.detected_key:
+        raise HTTPException(
+            status_code=400,
+            detail="No detected key on this project — run key detection first",
+        )
+
+    if not take.vocal_stored_as:
+        raise HTTPException(status_code=400, detail="This take has no recording")
+
+    raw_path = RECORDINGS_DIR / take.vocal_stored_as
+    if not raw_path.exists():
+        raise HTTPException(status_code=404, detail="Take recording not found")
+
+    try:
+        result = await run_in_threadpool(
+            apply_basic_pitch_correction,
+            str(raw_path),
+            project.detected_key,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    if take.corrected_stored_as and take.corrected_stored_as != result["filename"]:
+        _unlink_if_exists(CORRECTED_DIR / take.corrected_stored_as)
+
+    take.corrected_stored_as = result["filename"]
+    take.is_tuned = True
+
+    # The vocal changed — any previous export for this take is now stale.
+    if take.export_stored_as:
+        _unlink_if_exists(EXPORTS_DIR / take.export_stored_as)
+        take.export_stored_as = None
+
+    db.commit()
+    db.refresh(project)
+
+    _sync_project_status(project)
+    db.commit()
+    db.refresh(project)
+
+    return _project_to_item(project)
+
+
+@router.post("/{project_id}/takes/{take_id}/export", response_model=ProjectResponse)
+async def export_take(
+    project_id: str,
+    take_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Mix a take's vocal (auto-tuned if available) with the backing track to MP3."""
+    project = _get_user_project(project_id, db, current_user)
+    take = _get_take(project, take_id)
+
+    if not take.vocal_stored_as:
+        raise HTTPException(status_code=400, detail="This take has no recording")
+
+    instrumental_path = _resolve_backing_track_path(project)
+    vocal_path = _resolve_take_vocal_path(take)
+
+    try:
+        result = await run_in_threadpool(
+            mix_audio,
+            str(instrumental_path),
+            str(vocal_path),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    if take.export_stored_as:
+        _unlink_if_exists(EXPORTS_DIR / take.export_stored_as)
+
+    take.export_stored_as = result["filename"]
+    db.commit()
+    db.refresh(project)
+
+    _sync_project_status(project)
     db.commit()
     db.refresh(project)
 

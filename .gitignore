@@ -37,3 +37,8 @@ backend/recordings/
 backend/exports/
 backend/corrected/
 backend/demucs_output_*/
+
+# Environment files (secrets) — commit .env.example instead
+.env
+.env.local
+.env.*.local

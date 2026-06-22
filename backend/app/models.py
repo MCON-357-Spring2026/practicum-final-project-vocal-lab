@@ -6,7 +6,7 @@ These classes map Python objects to rows in SQLite tables.
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -95,9 +95,45 @@ class Project(Base):
 
     original_stored_as = Column(String, nullable=True)
     instrumental_stored_as = Column(String, nullable=True)
+    # Legacy single-vocal columns (kept for backward compat; superseded by takes).
     vocal_stored_as = Column(String, nullable=True)
     export_stored_as = Column(String, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     user = relationship("User", back_populates="projects")
+    takes = relationship(
+        "Take",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+
+
+class Take(Base):
+    """
+    One recorded vocal take within a project.
+
+    A project can have many takes ("Take 1", "Take 2", …). Each take can be
+    independently auto-tuned and exported.
+    """
+
+    __tablename__ = "takes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    take_id = Column(String, unique=True, index=True, nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+
+    name = Column(String, nullable=False)  # e.g. "Take 1"
+
+    # Raw browser recording under recordings/.
+    vocal_stored_as = Column(String, nullable=True)
+    # Auto-tuned vocal under corrected/ (set after pitch correction).
+    corrected_stored_as = Column(String, nullable=True)
+    # Final mixed MP3 under exports/.
+    export_stored_as = Column(String, nullable=True)
+
+    is_tuned = Column(Boolean, nullable=False, default=False)
+
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    project = relationship("Project", back_populates="takes")

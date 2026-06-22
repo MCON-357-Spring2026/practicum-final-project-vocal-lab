@@ -58,16 +58,22 @@ export function backingTrackUrl(project) {
   return mediaUrls.original(filename);
 }
 
-/** Vocal playback — after auto-tune the file lives under /corrected/. */
-export function vocalUrl(project) {
-  if (!project?.vocal_stored_as) return null;
-  if (
-    project.status === PROJECT_STATUS.TUNED ||
-    project.status === PROJECT_STATUS.EXPORTED
-  ) {
-    return mediaUrls.corrected(project.vocal_stored_as);
+/** Take vocal playback — auto-tuned file lives under /corrected/, else raw under /recordings/. */
+export function takeVocalUrl(take) {
+  if (!take) return null;
+  if (take.is_tuned && take.corrected_stored_as) {
+    return mediaUrls.corrected(take.corrected_stored_as);
   }
-  return mediaUrls.vocal(project.vocal_stored_as);
+  if (take.vocal_stored_as) {
+    return mediaUrls.vocal(take.vocal_stored_as);
+  }
+  return null;
+}
+
+/** Export MP3 playback/download URL for a take. */
+export function takeExportUrl(take) {
+  if (!take?.export_stored_as) return null;
+  return mediaUrls.export(take.export_stored_as);
 }
 
 /** What the project detail page should offer (derived from status + upload_type). */
@@ -77,34 +83,18 @@ export function projectActions(project) {
   const isFullSong = project.upload_type === UPLOAD_TYPES.FULL_SONG;
   const hasInstrumental = Boolean(project.instrumental_stored_as);
   const isProcessing = project.status === PROJECT_STATUS.PROCESSING;
+  // A full song still needs its vocals removed before it has a backing track.
+  const needsVocalRemoval = isFullSong && !hasInstrumental;
 
   return {
     showSpinner: isProcessing,
-    canRemoveVocals:
-      isFullSong &&
-      !hasInstrumental &&
-      project.status === PROJECT_STATUS.READY_TO_RECORD,
+    // Full song: one button removes vocals AND detects the key on the result.
+    canRemoveAndDetect: needsVocalRemoval && !isProcessing,
+    // Plain key detection — instrumentals, or full songs after vocal removal.
     canRedetectKey:
-      project.status === PROJECT_STATUS.READY_TO_RECORD &&
-      Boolean(backingTrackFilename(project)),
-    canRecord:
-      project.status === PROJECT_STATUS.READY_TO_RECORD && backingTrackFilename(project),
-    canAutoTune:
-      project.status === PROJECT_STATUS.VOCAL_RECORDED &&
-      Boolean(project.vocal_stored_as) &&
-      Boolean(project.detected_key),
-    canStartNewTake:
-      Boolean(project.vocal_stored_as) &&
-      project.status !== PROJECT_STATUS.PROCESSING &&
-      Boolean(backingTrackFilename(project)),
-    canRerecord:
-      Boolean(project.vocal_stored_as) &&
-      project.status !== PROJECT_STATUS.PROCESSING &&
-      Boolean(backingTrackFilename(project)),
-    canExport:
-      project.status === PROJECT_STATUS.VOCAL_RECORDED ||
-      project.status === PROJECT_STATUS.TUNED,
-    canPlayExport: project.status === PROJECT_STATUS.EXPORTED && project.export_stored_as,
+      !isProcessing && Boolean(backingTrackFilename(project)) && !needsVocalRemoval,
+    // Recording is available whenever a backing track exists and we're not busy.
+    canRecord: !isProcessing && Boolean(backingTrackFilename(project)),
   };
 }
 
@@ -112,10 +102,13 @@ export const projectEndpoints = {
   create: () => `${API_URL}/projects`,
   mine: () => `${API_URL}/projects/mine`,
   one: (projectId) => `${API_URL}/projects/${projectId}`,
+  update: (projectId) => `${API_URL}/projects/${projectId}`,
   removeVocals: (projectId) => `${API_URL}/projects/${projectId}/remove-vocals`,
   redetectKey: (projectId) => `${API_URL}/projects/${projectId}/redetect-key`,
-  saveVocal: (projectId) => `${API_URL}/projects/${projectId}/vocal`,
-  clearVocal: (projectId) => `${API_URL}/projects/${projectId}/vocal`,
-  pitchCorrect: (projectId) => `${API_URL}/projects/${projectId}/pitch-correct`,
-  exportMix: (projectId) => `${API_URL}/projects/${projectId}/export`,
+  takes: (projectId) => `${API_URL}/projects/${projectId}/takes`,
+  take: (projectId, takeId) => `${API_URL}/projects/${projectId}/takes/${takeId}`,
+  pitchCorrectTake: (projectId, takeId) =>
+    `${API_URL}/projects/${projectId}/takes/${takeId}/pitch-correct`,
+  exportTake: (projectId, takeId) =>
+    `${API_URL}/projects/${projectId}/takes/${takeId}/export`,
 };

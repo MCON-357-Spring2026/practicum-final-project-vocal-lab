@@ -1,9 +1,8 @@
-# SoundJBeats Studio — Backend
+# SoundLab — Backend
 
-FastAPI API for upload, vocal removal, recording, auto-tune, and export.
+FastAPI API for upload, vocal removal, recording takes, auto-tune, and export.
 
-**API contract:** [API_CONTRACT.md](./API_CONTRACT.md)  
-**Branch:** `partner/projects-api` (backend only — do not edit `frontend/`)
+**API contract:** [API_CONTRACT.md](./API_CONTRACT.md)
 
 ## Prerequisites
 
@@ -65,21 +64,25 @@ See `.env.example` in `backend/`.
 1. `POST /projects` — upload `full_song` or `instrumental`
 2. `POST /projects/{id}/remove-vocals` — full song only (Demucs)
 3. `POST /projects/{id}/redetect-key` — optional, on instrumental
-4. `POST /projects/{id}/vocal` — save browser recording
-5. `POST /projects/{id}/pitch-correct` — auto-tune toward detected key
-6. `POST /projects/{id}/export` — mix backing track + vocal → MP3
+4. `POST /projects/{id}/takes` — save a browser recording as a take
+5. `POST /projects/{id}/takes/{take_id}/pitch-correct` — auto-tune a take toward the detected key
+6. `POST /projects/{id}/takes/{take_id}/export` — mix a take's vocal + backing track → MP3
+
+A project can have many takes; each is auto-tuned and exported independently. Auto-tuning a take clears its previous export (the old mix is stale). The legacy single-vocal routes (`/vocal`, `/pitch-correct`, `/export`) remain but are superseded by takes.
 
 All `/projects/*` routes require `Authorization: Bearer <token>`.
 
 ## Status values
 
+The project `status` is derived from its takes (see `_sync_project_status`).
+
 | Status | When |
 |--------|------|
 | `processing` | Upload key detect or Demucs running |
-| `ready_to_record` | Backing track + key ready |
-| `vocal_recorded` | Mic vocal saved |
-| `tuned` | Auto-tune applied |
-| `exported` | Final mix created |
+| `ready_to_record` | Backing track + key ready, no takes |
+| `vocal_recorded` | At least one take recorded |
+| `tuned` | A take has been auto-tuned |
+| `exported` | A take has been exported |
 
 ## Static files
 

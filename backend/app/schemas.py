@@ -64,6 +64,30 @@ class RecordingResponse(BaseModel):
 # --- Project schemas (see docs/API_CONTRACT.md) ---
 
 
+class ProjectUpdate(BaseModel):
+    """JSON body for PATCH /projects/{project_id} — rename a project."""
+
+    name: str
+
+
+class TakeUpdate(BaseModel):
+    """JSON body for PATCH /projects/{project_id}/takes/{take_id} — rename a take."""
+
+    name: str
+
+
+class TakeResponse(BaseModel):
+    """JSON shape for one recorded take within a project."""
+
+    take_id: str
+    name: str
+    vocal_stored_as: str | None = None
+    corrected_stored_as: str | None = None
+    export_stored_as: str | None = None
+    is_tuned: bool = False
+    created_at: datetime
+
+
 class ProjectResponse(BaseModel):
     """JSON shape for /projects endpoints."""
 
@@ -80,4 +104,5 @@ class ProjectResponse(BaseModel):
     instrumental_stored_as: str | None = None
     vocal_stored_as: str | None = None
     export_stored_as: str | None = None
+    takes: list[TakeResponse] = []
     created_at: datetime

@@ -67,18 +67,27 @@ Output: `frontend/dist/`
 1. Register or log in on the dashboard.
 2. Upload a **full song** or **instrumental** MP3.
 3. Open the project — wait for key detection (and vocal removal for full songs).
-4. Record vocals over the backing track (microphone required).
-5. **Auto-tune** → **Export mix** → download MP3.
+4. Record a vocal **take** over the backing track (microphone required), then **Save as new take**.
+5. Per take: **Auto-tune** → **Export mix** → **Download mix**.
 
-Optional: re-detect key, discard vocal and re-record, delete project.
+A project can hold many takes; each is auto-tuned and exported independently.
+
+Optional: rename project/takes, discard an unsaved recording and re-record, delete a take, delete the project.
+
+### Recorder & export rules
+
+- While a take is being recorded or has an unsaved preview, the recorder stays put and "Start recording" is hidden until you **Save as new take** or **Discard & re-record**.
+- After saving, the recorder is hidden until the latest take is **exported** or **deleted** — so you finish one take before starting the next.
+- A take's **Export mix** button disappears once it's exported. Auto-tuning a take clears its stale export, so **Export mix** returns to export the tuned version.
 
 ## Key source files
 
 | Area | Files |
 |------|-------|
 | Pages | `src/pages/Dashboard.jsx`, `ProjectDetail.jsx` |
+| Recording & takes | `src/components/VocalRecorder.jsx`, `TakeCard.jsx`, `MixPreview.jsx` |
 | API client | `src/api/client.js`, `auth.js`, `projects.js` |
-| Contract helpers | `src/api/projectContract.js` — statuses, media URLs, `projectActions()` |
+| Contract helpers | `src/api/projectContract.js` — statuses, media/take URLs, `projectActions()` |
 | Styling | `src/styles/studio.css` |
 | Shell / branding | `src/components/AppShell.jsx`, `PageDecorations.jsx` |
 
