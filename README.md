@@ -1,67 +1,63 @@
-# RecipeShare
+[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/FHXdZx9N)
 
-RecipeShare is a web application built with Spring Boot that allows users to create, search, and share recipes. The goal of RecipeShare is to provide an easy-to-use platform for discovering new recipes, sharing your own, and connecting with other cooking enthusiasts.
+# SoundLab
 
-## Goals
+SoundLab is a browser-based home vocal studio. Upload a backing track (a full song or an instrumental), record vocals over it in the browser, auto-tune each take toward the song's detected key, and export a mixed MP3 — all organized per project.
 
-- Allow users to create and manage their own recipes.
-- Enable searching and browsing of recipes by category, ingredients, or keywords.
-- Provide sharing features so users can share recipes with others.
-- Offer a simple, intuitive web interface.
+- **Backend:** FastAPI + SQLAlchemy (Python)
+- **Frontend:** React + Vite
+- **Audio:** librosa (key detection), Demucs (vocal removal), bundled ffmpeg + lameenc (mixing/export)
 
-## Features
+## What you can do
 
-- RESTful API for recipe management.
-- Web-based user interface.
-- Recipe search and filtering.
-- Recipe sharing functionality.
+1. Register / log in.
+2. Create a project by uploading a **full song** or an **instrumental** MP3.
+3. For a full song, remove the vocals (Demucs) to get a backing track; the song's musical key is detected automatically.
+4. Record one or more vocal **takes** over the backing track.
+5. **Auto-tune** any take toward the detected key and **export** it as a mixed MP3.
 
-## Installation
+A project can hold many takes; each take is independently auto-tuned and exported.
 
-### Prerequisites
+## Repository layout
 
-- Java 17 or higher
-- Maven 3.8+
-- Git
+| Path | Purpose |
+|------|---------|
+| `backend/` | FastAPI API, database models, audio services, migrations |
+| `frontend/` | React + Vite single-page app |
+| `docs/API_CONTRACT.md` | HTTP API the frontend builds against |
+| `docs/backend.md` | Backend setup, routes, and workflow |
+| `docs/frontend.md` | Frontend setup, routes, and deploy |
 
-### Steps
+## Quick start (local)
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/recipeshare.git
-   cd recipeshare
-   ```
+Run the backend and frontend in two terminals.
 
-2. **Build the project**
-   ```bash
-   mvn clean install
-   ```
+### Backend (http://127.0.0.1:8000)
 
-3. **Run the application**
-   ```bash
-   mvn spring-boot:run
-   ```
-   The application will start on [http://localhost:8081](http://localhost:8081).
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate        # Windows  (use: source .venv/bin/activate on macOS/Linux)
+pip install -r requirements.txt
+copy .env.example .env         # Windows  (use: cp .env.example .env elsewhere)
+alembic upgrade head
+python -m uvicorn app.main:app --reload
+```
 
-## Usage
+Swagger docs: http://127.0.0.1:8000/docs
 
-- Access the home page at [http://localhost:8081](http://localhost:8081).
-- Use the API endpoints to create, search, and share recipes (see API documentation for details).
+### Frontend (http://localhost:5173)
 
-## Contributing
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-Contributions are welcome! Please fork the repository and submit a pull request.
+Set `VITE_API_URL` in `frontend/.env.local` if the backend is not on the default `http://127.0.0.1:8000`.
 
-## License
+## Documentation
 
-This project is licensed under the MIT License.
-
-## Contact
-
-For questions or feedback, please open an issue on GitHub.
-
-## Reference Documentation
-
-- [Spring Boot Documentation](https://spring.io/projects/spring-boot)
-- [Apache Maven Documentation](https://maven.apache.org/guides/index.html)
-
+- API contract: [docs/API_CONTRACT.md](docs/API_CONTRACT.md)
+- Backend guide: [docs/backend.md](docs/backend.md)
+- Frontend guide: [docs/frontend.md](docs/frontend.md)
